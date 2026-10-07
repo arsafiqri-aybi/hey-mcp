@@ -1,6 +1,6 @@
 # Repair status — 0.2.0
 
-Source repairs implemented. Gateway regression tests: 28 PASS; Android verifier tests: 7 PASS; debug and unsigned release APK builds: PASS; lint: 0 errors, 4 warnings. See repair-0.2.0.json. Physical Vivo visual/media/audio/lifecycle retests remain required. Firebase/FCM configuration remains unavailable. Original 0.1.0 signing key was not recovered, so an in-place update is blocked; installed data was not removed. Prior evaluation below is historical evidence.
+Source repairs implemented. Gateway regression tests: 28 PASS; Android verifier tests: 7 PASS; debug and unsigned release APK builds: PASS; lint: 0 errors, 4 warnings. See repair-0.2.0.json. Physical Vivo visual/media/audio/lifecycle retests remain required. Firebase/FCM configuration remains unavailable. Original 0.1.0 signing key was not recovered, so an in-place update is blocked; installed data was not removed. Gateway public and authenticated plugin checks verified version 0.2.0; existing device pairing/state remains. See hey-mcp/evaluation/deployment-0.2.0.json. Prior evaluation below is historical evidence.
 
 # Release truth — 0.1.0
 

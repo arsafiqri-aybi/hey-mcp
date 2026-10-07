@@ -1976,3 +1976,17 @@ The owner authorized repairs and related root-cause fixes. Source changes are de
 **Preserve:** HUMAN takeover, fresh refs/stateVersion, device serialization, cancellation, idempotency/conflict/replay protection, credential binding, webpage authority boundary, HTTPS/public-network checks, TLS validation, privacy redaction, explicit partial/unknown observation, and earlier evidence history.
 
 **Current repair map:** all implemented defects are SOURCE_REPAIRED / DEVICE_RETEST_REQUIRED unless an automated regression specifically verifies the server behavior. P0-E configuration is still BLOCKED. Download DNS rebinding, actual media pixels, audio intelligibility and real-host ingestion remain additional evidence gates.
+
+
+## 36. 2026-10-07 — Repair delivery and honest remaining gates
+
+Android source commit: `a1d13b273610e2086b903fd656065b5ff3972c2c`. Gateway source commit: `e968132a41ce6d78fdfe2ff8addcee2258892b39`. Both repositories verified by non-force GitHub commit tooling.
+
+- Gateway: 28/28 regression tests, JavaScript syntax PASS.
+- Android: 7/7 verifier tests; debug and unsigned release builds PASS; lint 0 errors, 4 recorded warnings; debug v2 signature and ZIP alignment verified.
+- Cloudflare: public health 200/version 0.2.0, anonymous MCP 401, authenticated plugin status/version 0.2.0, existing phone ONLINE. Namespace ID and encrypted-state secret preserved. Revoked synthetic device reports stale/UNKNOWN health.
+- Deployment root cause: initial module uploads updated public fetch while existing Durable Object responses stayed on 0.1.0. Legacy no-op redeploys did not resolve the mismatch. The existing HeyStore/sqlite declaration was reconciled using exports; all create/delete/rename/transfer arrays were empty. Source configuration now records exports. Future uploads must preserve this declaration; do not revert to legacy migrations. Receipt: evaluation/deployment-0.2.0.json.
+- APK artifacts and the new signing-key backup were saved. Original-key recovery remains BLOCKED; new certificate cannot authorize updating the installed app. No uninstall, reset, pairing replacement or real phone task was performed.
+- Firebase/FCM remains BLOCKED_CONFIGURATION. New APK physical visual/media/audio/privacy/pause lifecycle tests remain RETEST_REQUIRED. The online pre-repair phone is not evidence for new Android behavior.
+
+This is a delivered source/build/gateway repair, not product COMPLETE or physical audiovisual certification. The entire earlier stress-test history is preserved.

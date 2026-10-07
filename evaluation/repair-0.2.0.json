@@ -41,5 +41,10 @@
       "bytes": 7374220,
       "sha256": "692c43852c8dfc751df8836b3850a291c1fbab37af1418db49a332cc60bfffd4"
     }
-  ]
+  ],
+  "gatewayDeployment": {
+    "state": "PASS_PUBLIC_AND_AUTHENTICATED_0.2.0",
+    "receiptRepository": "arsafiqri-aybi/hey-mcp",
+    "receipt": "evaluation/deployment-0.2.0.json"
+  }
 }

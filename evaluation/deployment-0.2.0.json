@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "worker": "hey-gateway",
+  "url": "https://hey-gateway.arsafiqri-ua03.workers.dev/mcp",
+  "sourceCommit": "e968132a41ce6d78fdfe2ff8addcee2258892b39",
+  "androidCommit": "a1d13b273610e2086b903fd656065b5ff3972c2c",
+  "workerVersionId": "8ee93f58-8531-42f6-9b02-488069fb6dc2",
+  "deployedAt": "2026-10-07T12:10:13.353846Z",
+  "durableObjectNamespace": "c75ae06324c94a828e72ce6a8e20e6c1",
+  "namespaceReconciliation": {
+    "created": [],
+    "deleted": [],
+    "renamed": [],
+    "transferred": []
+  },
+  "secretsPreserved": [
+    "STATE_KEY",
+    "SETUP_HASH",
+    "SETUP_EXPIRES"
+  ],
+  "legacyBootstrapControlHash": "ABSENT",
+  "declaration": "exports.HeyStore durable-object sqlite; no namespace lifecycle change",
+  "smoke": {
+    "health": "200_VERSION_0.2.0",
+    "anonymousMcp": "401_AUTH_REQUIRED",
+    "authenticatedPluginStatus": "PASS_VERSION_0.2.0_EXISTING_PHONE_ONLINE",
+    "revokedSyntheticDeviceHealth": "PASS_OFFLINE_STALE_BROWSER_AUDIO_UNKNOWN",
+    "ownerIntentAnonymousPost": "401_AUTH_REQUIRED; proves repaired Durable Object route without device mutation",
+    "wake": "UNCONFIGURED"
+  },
+  "physicalPhoneUses": "PRE_REPAIR_APK; no new rendering/audio gate claimed"
+}

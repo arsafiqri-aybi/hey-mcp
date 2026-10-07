@@ -40,3 +40,7 @@ The original 0.1.0 debug certificate SHA-256 is e77c945c03ae0126983aca0094a1dc98
 7. Pause during RUNNING work, then resume with and without network. Require OWNER_PAUSED, durable result reconciliation, clean progress and no automatic execution of paused waiting work.
 8. Configure Firebase/FCM and test dormant wake. Keep force-stop and reboot distinct.
 9. Re-run prior security/ownership/idempotency/network-loss regression cases on the real device. Tests not executed remain RETEST_REQUIRED.
+
+## Gateway deployment declaration
+
+The live Worker now uses `exports.HeyStore = {type: "durable-object", storage: "sqlite"}`. Existing namespace reconciliation created/deleted/renamed/transferred nothing and preserved the namespace ID. Public health and authenticated plugin status both verified 0.2.0 only after reconciliation. Keep this declaration on future uploads; do not switch back to the legacy migrations configuration. See evaluation/deployment-0.2.0.json.

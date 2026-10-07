@@ -36,7 +36,7 @@
     "source": "IMPLEMENTED_P0_REPAIR",
     "gatewayTests": "PASS_28_CASES",
     "androidBuild": "PASS_DEBUG_AND_UNSIGNED_RELEASE",
-    "gatewayDeployment": "PENDING_0_2_0_UPLOAD",
+    "gatewayDeployment": "PASS_0_2_0_PUBLIC_AND_AUTHENTICATED_STATUS",
     "privateDisplayRuntime": "RETEST_REQUIRED_AFTER_EMPIRICAL_FAILURE",
     "vivoBackground": "PRIOR_BASELINE_PASS_RETEST_REQUIRED_0_2_0",
     "pushWake": "BLOCKED_FIREBASE_CONFIGURATION",
