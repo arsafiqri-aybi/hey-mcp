@@ -1,8 +1,8 @@
 {
   "worker": "hey-gateway",
   "url": "https://hey-gateway.arsafiqri-ua03.workers.dev/mcp",
-  "deploymentId": "c3979f5570bd460d992b7a3e4af563ac",
-  "sourceCommit": "c24360b2feed42f29535902235416c947e835573",
+  "deploymentId": "a8ba88fae442420782f4a8cd4926bcca",
+  "sourceCommit": "14b694c1defcd58abb7411116766013a1c889572",
   "modules": [
     "worker.js",
     "core.js",
@@ -14,5 +14,11 @@
   "liveProtocolChecks": 16,
   "ownerSetup": "AWAITING_OWNER",
   "deviceVerified": false,
-  "temporaryControlCredential": "REVOKED_AFTER_LIVE_PROTOCOL_TESTS"
+  "temporaryControlCredential": "REVOKED_AFTER_LIVE_PROTOCOL_TESTS",
+  "ownerFormFix": {
+    "referrerPolicy": "same-origin",
+    "liveGet": "PASS",
+    "nullOriginPost": "REJECTED",
+    "realPhoneRetry": "AWAITING_OWNER"
+  }
 }
