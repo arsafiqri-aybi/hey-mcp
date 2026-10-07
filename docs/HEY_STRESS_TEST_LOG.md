@@ -1346,3 +1346,96 @@ A later cancel request therefore could not establish pause semantics.
 **Classification:** **ABORTED / RETEST REQUIRED**.
 
 No PASS/FAIL conclusion is drawn from this attempt.
+
+
+---
+
+## 27. 2026-10-07 — Intentional pause while task is RUNNING: valid retest
+
+### 27.1 Setup
+
+Goal:
+- verify semantics when the owner presses **Jeda Hey** while an agent task is already `RUNNING`.
+
+Sequence:
+1. device confirmed `ONLINE`, browser `READY`, control `AGENT`;
+2. generic HTML5 media reset to 0 seconds;
+3. `hey_watch(maxSeconds:120, audioRequired:false)` started;
+4. task confirmed `RUNNING`;
+5. user pressed **Settings -> Jeda Hey** while the task was active.
+
+### 27.2 Observed task outcome
+
+Immediately after pause:
+- task changed to `UNKNOWN`;
+- reason: `EXECUTION_LOST`;
+- `verified:false`;
+- result remained null;
+- evidence already collected remained readable.
+
+After heartbeat expiry:
+- top-level device settled to `online:false`;
+- task remained permanently `UNKNOWN / EXECUTION_LOST`;
+- no clean owner-pause terminal reason was delivered.
+
+**Status:** **FAIL P0**.
+
+### 27.3 Stale health after pause
+
+After device became top-level offline, nested health still contained:
+- `connection:"ONLINE"`;
+- `browser:"READY"`;
+- the old active task ID;
+- the last progress snapshot.
+
+This is another reproduction of the stale-health problem, now through intentional pause rather than Force Stop.
+
+**Status:** **NEEDS FIX**.
+
+### 27.4 Root cause confirmed in Android source
+
+Current `HeyService` STOP path:
+
+`onStartCommand(... STOP ...) -> persist ownerIntent=PAUSED -> stopSelf() -> START_NOT_STICKY`
+
+There is no active-task finalization before `stopSelf()`.
+
+Current `onDestroy()`:
+- marks service stopped;
+- removes callbacks;
+- shuts down the network executor;
+- closes audio/browser;
+- updates local connection/browser state.
+
+It does **not** finish the active task before process/service teardown.
+
+Gateway behavior then correctly cannot prove how execution ended, so it falls back to:
+`UNKNOWN / EXECUTION_LOST`.
+
+### 27.5 Required correction
+
+Intentional owner pause must be a transactional shutdown boundary:
+
+1. persist owner intent `PAUSED`;
+2. if an active task exists, finalize it explicitly with a terminal reason such as `OWNER_PAUSED`;
+3. persist the terminal receipt locally before teardown;
+4. attempt a bounded final result delivery to the gateway;
+5. clear local active-task/progress state;
+6. stop browser/audio/network runtime;
+7. only then stop the service.
+
+If final delivery cannot complete before transport shutdown:
+- preserve the pending terminal result durably;
+- deliver it on next service start;
+- never let intentional owner pause degrade into ambiguous `EXECUTION_LOST`.
+
+### 27.6 Contract requirement
+
+Different shutdown causes must remain distinguishable:
+
+- HUMAN takeover -> `HUMAN_CONTROL_ACTIVE`;
+- explicit cancel -> `OWNER_CANCELLED`;
+- owner pauses Hey -> `OWNER_PAUSED`;
+- unexpected process/transport loss -> `EXECUTION_LOST`.
+
+**Conclusion:** owner pause currently loses task execution semantics and must be fixed before P0 lifecycle can be considered complete.
