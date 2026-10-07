@@ -1168,3 +1168,79 @@ Project acceptance classification:
 - future boot persistence may be added only if explicitly desired as a product feature.
 
 **Preserve truthfulness:** do not label unexecuted platform-behavior assumptions as empirically verified tests.
+
+
+---
+
+## 24. 2026-10-07 — Intentional pause semantics + interaction-motion UX
+
+### 24.1 Intentional pause via Hey Settings
+
+User triggered **Settings -> Jeda Hey**.
+
+Observed status after service stop:
+- top-level `online:false`;
+- `connection:"PAIRED"`;
+- `reason:"SERVICE_STOPPED"`;
+- `browser:"READY"` remained as historical/local state;
+- audio became `CONSENT_ENDED`;
+- control remained `AGENT`.
+
+This differs from an unexpected transport drop and confirms the Android app has a distinct local stop path.
+
+### 24.2 Command submitted while intentionally paused
+
+A safe navigation was submitted while Hey remained intentionally paused.
+
+Observed:
+- task entered `WAITING_DEVICE`;
+- reason: `PUSH_CONFIGURATION_REQUIRED`;
+- behavior therefore matched a generic offline/unreachable device rather than a deliberate owner pause.
+
+**Conclusion:** intentional pause is not yet a first-class server/MCP control state.
+
+**Required correction:**
+- propagate owner intent explicitly to gateway/MCP;
+- when owner intent is PAUSED, do not attempt push wake;
+- do not leave normal agent work queued for silent auto-resume;
+- return an explicit machine-readable reason such as `OWNER_PAUSED` / `DEVICE_PAUSED_BY_OWNER`;
+- only resume queued work after an explicit owner resume policy, not merely because the transport reconnects.
+
+**Status:** local pause path **PASS**, end-to-end pause semantics **FAIL / NEEDS FIX**.
+
+### 24.3 Safety cleanup of paused-device test task
+
+The test navigation was cancelled while the device was offline/paused.
+
+Observed:
+- task became terminal `CANCELLED`;
+- no later execution should occur when Hey is resumed.
+
+**Status:** cleanup **PASS**.
+
+### 24.4 UX finding — tap/motion acknowledgement too weak
+
+User feedback:
+- after tapping controls, the UI does not feel responsive enough;
+- it is difficult to feel whether a click/tap was actually accepted.
+
+Current UI implementation uses mostly static button surfaces and page-level fade/translation, so local interaction acknowledgement is visually weak.
+
+**Classification:** **DEFERRED UX FIX** (not a P0 execution blocker, but important for confidence and premium feel).
+
+**Required design direction:**
+- add a clear pressed state on touch-down;
+- use a very small scale/depth/elevation response rather than a large animation;
+- add ripple/tonal response where appropriate;
+- release with a short spring/ease-out;
+- use subtle haptic confirmation for consequential controls such as **Ambil alih**, **Kembalikan ke Hey**, **Jeda Hey**, and **Siapkan browser**;
+- distinguish accepted, pending, and completed states instead of relying only on page transitions;
+- preserve the clean premium visual language: motion should be felt immediately but remain quiet, not flashy.
+
+Suggested motion envelope for later prototyping:
+- touch-down response: roughly 80–120 ms;
+- release/settle: roughly 160–220 ms;
+- scale should stay subtle (around 0.98–0.99 if used);
+- avoid global animation when only one control changed state.
+
+**Status:** **NOTED / DEFERRED FOR UI POLISH PASS**.
