@@ -1328,3 +1328,21 @@ This confirms that pause/resume currently recreates browser runtime identity rat
 Future decision:
 - if exact tab/session persistence is a product requirement, persist/restore it deliberately;
 - otherwise document that pause stops the runtime and resume creates a new runtime boundary.
+
+
+---
+
+## 26. 2026-10-07 — Pause-during-RUNNING attempt aborted
+
+A watch task was prepared for the planned **Jeda Hey while RUNNING** test.
+
+Before the user executed the pause action, the watch independently reached terminal:
+- status: `ERROR`;
+- reason: `WATCH_LIMIT_REACHED`;
+- media remained paused at 0 seconds.
+
+A later cancel request therefore could not establish pause semantics.
+
+**Classification:** **ABORTED / RETEST REQUIRED**.
+
+No PASS/FAIL conclusion is drawn from this attempt.
