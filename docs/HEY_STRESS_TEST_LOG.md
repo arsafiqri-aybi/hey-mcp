@@ -1872,3 +1872,85 @@ Therefore the remaining owner-pause defect is primarily:
 - stale health cleanup.
 
 Do not remove the existing local `ownerIntent` guard while fixing the server-side pause contract.
+
+
+---
+
+## 34. 2026-10-07 — Screenshot privacy audit, URL-secret redaction, and live progress-leak reproduction
+
+### 34.1 Screenshot masking path — source audit
+
+Current Android screenshot flow masks sensitive inputs before requesting a fresh capture frame.
+
+Mask targets include:
+- `input[type=password]`;
+- `autocomplete=one-time-code`;
+- `autocomplete=cc-number`;
+- `autocomplete=cc-csc`.
+
+The mask:
+1. injects fixed overlays above sensitive input rectangles;
+2. requests a new frame;
+3. rejects stale pre-request frames;
+4. only then encodes the image;
+5. removes the mask afterward.
+
+**Status:** masking design **PASS at source level**.
+
+Current end-to-end screenshot test remains **BLOCKED** because the ImageReader capture path still returns `UNAVAILABLE`.
+
+**Requirement for the future shared-WebView capture fix:** preserve this mask-before-capture ordering and the fresh-frame requirement.
+
+### 34.2 URL query secret redaction — live PASS
+
+Live navigation used a dummy query parameter named `token`.
+
+Observed in:
+- task result URL;
+- evidence URL;
+- tab-list URL;
+
+the secret value was replaced by:
+`[redacted]`.
+
+The dummy raw value did not appear in returned observation/evidence.
+
+**Status:** **PASS**.
+
+### 34.3 Privacy/verifier interaction bug
+
+The same navigation finished:
+- `DONE`;
+- `verified:false`;
+- `POSTCONDITION_UNCERTAIN`.
+
+Root cause:
+- navigation verifier compares the observed URL directly to the raw requested URL;
+- the observation pipeline redacts sensitive query values before verification;
+- therefore a correct navigation to a URL containing a sensitive query key can never exactly equal the unredacted command URL.
+
+**Status:** **VERIFIER BUG CONFIRMED**.
+
+Required correction:
+- verify navigation against a canonical internal URL before external redaction; or
+- apply the same deterministic redaction/canonicalization to both expected and observed values before comparison;
+- never weaken output redaction to satisfy verification.
+
+### 34.4 Task progress leakage — live reproduction confirmed again
+
+The terminal navigation task above contained watch-specific progress from an earlier media observation, including:
+- `currentTime`;
+- `duration`;
+- `frames`;
+- `audioChunks`;
+- `visualGap`;
+- `audioGap`;
+- `paused`.
+
+These values are unrelated to navigation.
+
+This live reproduction matches the previously confirmed source root cause: service-level `progress` is not reset on new task dispatch.
+
+**Status:** **FAIL / LIVE + SOURCE CONFIRMED**.
+
+This defect must be fixed before task-health/progress can be treated as authoritative across task boundaries.
