@@ -1549,3 +1549,139 @@ Preferred model:
 - heartbeat should transmit `{ taskId, generation, progress }` atomically.
 
 **Preserve:** terminal summaries such as `lastStatus` may remain separate from active-task progress, but the two must never be conflated.
+
+
+---
+
+## 30. 2026-10-07 — Auth, replay, token, and long-run journal audit
+
+### 30.1 Device authentication binding
+
+Source audit confirms:
+- device credentials are random 32-byte tokens;
+- only token hashes are used as credential keys;
+- credentials have explicit expiry;
+- credential kind must match the endpoint;
+- device credentials are bound to a specific device ID;
+- every device-authenticated call also checks the device record and rejects revoked devices.
+
+Task result/evidence writes additionally bind to:
+- task ID;
+- device ID;
+- execution generation;
+- command digest.
+
+**Status:** **PASS / STRONG BINDING**.
+
+### 30.2 Result replay protection
+
+Terminal result receipt is hashed from:
+- status;
+- verified;
+- result;
+- reason.
+
+If the same terminal receipt is resent:
+- exact duplicate is accepted as duplicate;
+- conflicting terminal result is rejected with `RESULT_CONFLICT`.
+
+Generation/digest mismatch is rejected with `STALE_EXECUTION`.
+
+**Status:** **PASS**.
+
+### 30.3 Evidence replay/order protection
+
+Evidence writes:
+- require the authenticated device to own the task;
+- require matching generation and digest;
+- require integer sequence;
+- require exact next sequence;
+- reject gaps with `EVIDENCE_SEQUENCE_GAP`;
+- accept exact duplicate evidence only when canonical content matches;
+- reject conflicting duplicate evidence with `EVIDENCE_CONFLICT`;
+- seal evidence at rest and store an integrity digest.
+
+**Status:** **PASS**.
+
+### 30.4 OAuth refresh rotation
+
+Control OAuth refresh flow deletes the used refresh credential before issuing a replacement refresh token.
+
+**Status:** **PASS**.
+
+### 30.5 Device token renewal is overlapping, not true rotation
+
+`/api/device/renew` authenticates the existing device token and issues a new 30-day device credential.
+
+The old credential is **not revoked when the new one is issued**. It remains valid until its own expiry, unless the entire device is revoked.
+
+Expired credentials are eventually deleted by the alarm cleanup.
+
+**Security consequence:** compromise of an older device token can remain usable for the remainder of its original validity window even after a successful renewal.
+
+**Status:** **SECURITY HARDENING NEEDED**.
+
+Preferred correction:
+- perform true rotation: issue new token and revoke/delete the credential used to renew;
+- support a very short overlap only if needed for crash-safe handoff;
+- persist the new token atomically on Android;
+- retain full-device revoke as the emergency kill switch.
+
+### 30.6 P0 longevity defect — permanent 10,000-action ceiling
+
+Server enqueue currently checks:
+
+`list('action:').size < 10000`
+
+Each unique action creates a durable `action:<deviceId>:<actionId>` receipt.
+
+Alarm cleanup removes expired pair/login/code/credential records and old evidence, but **never deletes action receipts**.
+
+Therefore after 10,000 unique action IDs across the gateway lifetime, all future new actions can fail with:
+`ACTION_JOURNAL_FULL`.
+
+Android has a parallel local receipt object and returns:
+`LOCAL_JOURNAL_FULL`
+when its receipt count reaches 10,000.
+
+**Conclusion:** this is a deterministic long-run availability failure, not a theoretical edge case.
+
+**Status:** **FAIL P0 / LONGEVITY**.
+
+Required redesign:
+- do not use a hard lifetime cap as replay protection;
+- use durable per-action receipts with a defined retention window and explicit protocol semantics;
+- or move the local journal to a scalable persisted store;
+- garbage-collect only when retry/replay guarantees are no longer required by contract;
+- separate server global limits from per-device limits;
+- add a soak test that exceeds the intended retention volume.
+
+### 30.7 Cancellation reason can preserve an unrelated prior reason
+
+For a non-running task, server cancel currently changes status to `CANCELLED` but does not overwrite `reason`.
+
+This was observed live when a WAITING_DEVICE task with:
+`reason:"PUSH_CONFIGURATION_REQUIRED"`
+was cancelled and returned:
+`status:"CANCELLED"`
+while keeping the push-configuration reason.
+
+**Required correction:** explicit owner cancellation must set:
+`reason:"OWNER_CANCELLED"`
+for both queued/waiting and running cancellation paths.
+
+**Status:** **NEEDS FIX / TERMINAL SEMANTICS**.
+
+### 30.8 Cryptographic primitives
+
+Source audit:
+- token generation uses cryptographic random bytes;
+- SHA-256 used for digests;
+- AES-GCM used for sealed state/evidence;
+- canonical serialization sorts object keys;
+- equality helper avoids an ordinary early-exit string comparison;
+- pairing codes are one-time and deleted at enrollment.
+
+**Status:** **PASS within current audit scope**.
+
+This is a source-level protocol audit, not a formal cryptographic proof or external penetration test.
