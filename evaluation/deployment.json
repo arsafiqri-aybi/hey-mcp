@@ -1,8 +1,8 @@
 {
   "worker": "hey-gateway",
   "url": "https://hey-gateway.arsafiqri-ua03.workers.dev/mcp",
-  "deploymentId": "a8ba88fae442420782f4a8cd4926bcca",
-  "sourceCommit": "14b694c1defcd58abb7411116766013a1c889572",
+  "deploymentId": "498775bc468b499bb3f5256d05e570e3",
+  "sourceCommit": "fdf70f6f431588d61338e971926e29b36d18a89a",
   "modules": [
     "worker.js",
     "core.js",
@@ -12,7 +12,7 @@
   "migration": "v1",
   "plugin": "https://chatgpt.com/plugins/plugins_6ac5ed4c9c1c8191abf36ba243d09d90",
   "liveProtocolChecks": 16,
-  "ownerSetup": "AWAITING_OWNER",
+  "ownerSetup": "CONFIGURED_LOGIN_FORM_AVAILABLE",
   "deviceVerified": false,
   "temporaryControlCredential": "REVOKED_AFTER_LIVE_PROTOCOL_TESTS",
   "ownerFormFix": {
@@ -20,5 +20,10 @@
     "liveGet": "PASS",
     "nullOriginPost": "REJECTED",
     "realPhoneRetry": "AWAITING_OWNER"
+  },
+  "oauthCallbackPolicyFix": {
+    "registeredChatGPTCallbackOrigin": "ALLOWED_VERIFIED_LIVE",
+    "unregisteredRedirect": "REJECTED_VERIFIED_LIVE",
+    "realOwnerConnection": "AWAITING_RETRY"
   }
 }
