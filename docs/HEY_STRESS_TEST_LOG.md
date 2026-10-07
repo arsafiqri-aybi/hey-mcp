@@ -789,3 +789,109 @@ After user re-consent:
 - it does **not** yet prove intelligible playback audio can be captured end-to-end because watch is rejected before evidence collection.
 
 **Status:** audio session recovery **PASS**; actual audio signal verification **BLOCKED by P0-B**.
+
+
+---
+
+## 17. 2026-10-07 — Ref/tab/input/evidence pagination follow-up
+
+### 17.1 Invalid tab identifiers
+
+Tested `tab_activate` and `tab_close` with fabricated tab IDs.
+
+Observed:
+- both operations were rejected;
+- browser state remained intact;
+- terminal reason was generic `COMMAND_FAILED`.
+
+**Status:** safety **PASS**, error semantics **NEEDS FIX**.
+
+Suggested explicit reasons:
+- `TAB_NOT_FOUND`;
+- `LAST_TAB_PROTECTED` when applicable.
+
+### 17.2 tab_open timing mismatch
+
+Opened a new tab for a public login page.
+
+Observed terminal evidence:
+- active result still reported `url:"about:blank"`;
+- the tab list already contained the intended GitHub URL;
+- a subsequent observe showed the page fully loaded.
+
+This explains part of the recurring `POSTCONDITION_UNCERTAIN` pattern: verification can run before the newly opened tab has committed its navigation even though the tab object already knows the target URL.
+
+**Required correction:** tab-open verification should wait for the target tab to leave `about:blank` / reach a bounded document lifecycle state.
+
+**Status:** **NEEDS FIX**.
+
+### 17.3 Non-sensitive fill verification
+
+Filled a public username field with a dummy value.
+
+Observed:
+- task reached `DONE`;
+- verifier returned `POSTCONDITION_UNCERTAIN`;
+- DOM evidence exposed input metadata but not the current non-sensitive value.
+
+**Conclusion:** the system lacks a reliable postcondition for `fill`.
+
+**Required correction:**
+- for non-sensitive inputs, expose a safely bounded current-value hash/length or explicit equality postcondition rather than relying on generic DOM text;
+- for sensitive inputs, preserve current redaction guarantees and verify only through device-side equality without returning the secret.
+
+**Status:** execution likely succeeded, verification **NEEDS FIX**.
+
+### 17.4 Invalid/fabricated ref
+
+A fabricated ref (`r9999`) paired with an otherwise current stateVersion was rejected.
+
+Observed reason:
+`STALE_REFERENCE`.
+
+**Status:** safety **PASS**, semantics **NEEDS FIX**.
+
+Suggested distinction:
+- `REF_NOT_FOUND` for a ref never present in the referenced snapshot;
+- `STALE_REFERENCE` only when the snapshot/ref was once valid but is no longer current.
+
+### 17.5 Keyboard action observability
+
+Sent a safe `TAB` key action.
+
+Observed:
+- task completed `DONE`;
+- verifier returned `POSTCONDITION_UNCERTAIN`;
+- evidence does not expose active/focused element.
+
+**Required correction:** include a non-sensitive active-element descriptor or action-specific focus postcondition for keyboard navigation.
+
+**Status:** execution **PASS/UNVERIFIED**, observability **NEEDS FIX**.
+
+### 17.6 Evidence cursor pagination
+
+Read a previously cancelled watch task with three evidence records using cursors 0, 1, and 2.
+
+Observed:
+- cursor progression returned 1 -> 2 -> 3;
+- `hasNext` was true, true, then false;
+- `evidenceCount:3` remained stable;
+- `observedAt` values increased monotonically;
+- media time remained 0 because the player was paused;
+- audio signals were consistently `SILENT_OR_UNAVAILABLE`.
+
+**Status:** pagination/order **PASS**.
+
+#### Audio chunk boundary detail
+
+Observed metadata:
+- chunk 1 ended at 1791362593324;
+- chunk 2 started at 1791362593324;
+- chunk 2 ended at 1791362595136;
+- chunk 3 started at 1791362595134.
+
+There is a ~2 ms overlap at one boundary.
+
+**Required correction:** define chunk timestamp semantics precisely and avoid overlap where practical, or explicitly document tolerated overlap if it is deliberate.
+
+**Status:** minor **NEEDS FIX / SPEC CLARIFICATION**.
