@@ -35,7 +35,7 @@
   "gates": {
     "source": "IMPLEMENTED_P0_REPAIR",
     "gatewayTests": "PASS_28_CASES",
-    "androidBuild": "PASS_DEBUG_AND_UNSIGNED_RELEASE",
+    "androidBuild": "PASS_0_2_1_DEBUG_AND_UNSIGNED_RELEASE",
     "gatewayDeployment": "PASS_0_2_0_PUBLIC_AND_AUTHENTICATED_STATUS",
     "privateDisplayRuntime": "RETEST_REQUIRED_AFTER_EMPIRICAL_FAILURE",
     "vivoBackground": "PRIOR_BASELINE_PASS_RETEST_REQUIRED_0_2_0",
@@ -47,10 +47,11 @@
     "releaseSigning": "BLOCKED_ORIGINAL_DEBUG_KEY_NOT_RECOVERED",
     "gatewayLiveProtocol": "PASS_16_SYNTHETIC_CLIENT_CHECKS",
     "privatePlugin": "CREATED_PRIVATE_METADATA_VERIFIED",
-    "androidLint": "PASS_0_ERRORS_4_WARNINGS",
+    "androidLint": "PASS_0_ERRORS_6_WARNINGS",
     "emulatorUI": "BLOCKED_HOST_RUNTIME",
-    "androidVerifier": "PASS_7_CASES",
-    "visualEvidence": "RETEST_REQUIRED_AFTER_EMPIRICAL_FAILURE"
+    "androidVerifier": "PASS_7_VERIFIER_AND_6_SERVICE_POLICY_CASES",
+    "visualEvidence": "RETEST_REQUIRED_AFTER_EMPIRICAL_FAILURE",
+    "serviceRecovery": "SOURCE_REPAIRED_PHYSICAL_RETEST_REQUIRED"
   },
   "completionRule": "No product COMPLETE claim until required runtime, wake, media, target-device and client integration gates pass. A build or mock device is not physical evidence. Unfinished target capabilities stay in the backlog and are not removed.",
   "replanTriggers": [
@@ -60,5 +61,9 @@
     "OEM wake lifecycle fails",
     "target host does not ingest MCP audio"
   ],
-  "sourceBaseline": "hey-by-ars-project-concept.md supplied by owner on 2026-10-07"
+  "sourceBaseline": "hey-by-ars-project-concept.md supplied by owner on 2026-10-07",
+  "componentVersions": {
+    "gateway": "0.2.0",
+    "android": "0.2.1"
+  }
 }

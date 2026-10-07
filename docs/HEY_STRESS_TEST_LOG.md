@@ -1990,3 +1990,20 @@ Android source commit: `a1d13b273610e2086b903fd656065b5ff3972c2c`. Gateway sourc
 - Firebase/FCM remains BLOCKED_CONFIGURATION. New APK physical visual/media/audio/privacy/pause lifecycle tests remain RETEST_REQUIRED. The online pre-repair phone is not evidence for new Android behavior.
 
 This is a delivered source/build/gateway repair, not product COMPLETE or physical audiovisual certification. The entire earlier stress-test history is preserved.
+
+
+## 37. 2026-10-07 — SERVICE_STOPPED report and Android 0.2.1 recovery hotfix
+
+**Owner report:** OFFLINE / SERVICE_STOPPED / AGENT / wake UNCONFIGURED after updating. Authenticated status confirmed a stale existing remote pairing record. Its last heartbeat lacked appVersion/runtime diagnostics; the exact installed version and physical termination trigger remain unconfirmed. No fresh 0.2.1 phone heartbeat has been observed.
+
+**Source-confirmed failures:** pause retained pausing=true through RESUME and queued unconditional stopSelf callbacks; startup was a one-shot Activity event; startup/init errors were replaced with SERVICE_STOPPED; Home/Browser/Settings lacked explicit connection controls/diagnostics; optional renewal/push work could precede or delay heartbeats; config retrieval could relabel successful enrollment as pairing failure.
+
+**Repairs:** generation-guarded pause completions; explicit resume clears pausing and reuses the runtime; three visible-owner startup attempts ten seconds apart; START_STICKY for paired ACTIVE only; guarded foreground promotion, explicit non-projection startup before audio consent on Android 12/13, optional notification permission; independent maintenance executor after primary heartbeat; Jalankan Hey/Lanjutkan Hey/Periksa koneksi in Home/Browser/Settings; version/runtime/error/local pairing visibility; retained initialization failure classification; independent Firebase config fetch after enrollment.
+
+Android commit: `50e4239547df48d6f2554ca13facbb90f10cf8a4`. Full details: [SERVICE_RECOVERY_0.2.1.md](https://github.com/arsafiqri-aybi/hey-android/blob/main/docs/SERVICE_RECOVERY_0.2.1.md). Gateway stays 0.2.0 and was not redeployed for this Android hotfix.
+
+**Automated evidence:** clean debug + unsigned release builds PASS; 13/13 Android unit tests including six focused pause-generation/retry-policy cases; lint 0 errors and 6 warnings (durable preference commit, browser JavaScript, localization); signature V2 and ZIP alignment PASS. Gateway regressions 28/28 and syntax PASS. Same signing certificate as the supplied 0.2.0 candidate, versionCode 3/versionName 0.2.1. APK artifacts saved; no device reset/uninstall/pair replacement occurred.
+
+**Installation:** updating over the supplied matching-certificate 0.2.0 APK preserves app-owned credentials/profile. It cannot update over original differently signed 0.1.0. A remote pairing record alone does not prove a newly installed app has a local token. The new UI distinguishes these states; do not promise no pairing is needed if local credentials are absent.
+
+**Required physical retest:** install update; open Home (visible 0.2.1); start/resume; verify first appVersion=0.2.1 authenticated heartbeat, runtime RUNNING and live browser; pause then quickly resume and wait beyond old five-second stop deadline; verify intentional pause stays paused; verify visible restart and network recovery. Actual Vivo service recovery remains RETEST_REQUIRED. Force-stop/OEM unlimited recovery is not claimed. FCM wake remains BLOCKED_CONFIGURATION and is independent of foreground startup.
