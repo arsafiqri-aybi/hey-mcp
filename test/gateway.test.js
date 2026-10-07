@@ -33,7 +33,7 @@ test('anonymous MCP denied, health discloses no device or credentials',async()=>
 });
 test('owner forms preserve same-origin POST metadata and reject null or foreign origins',async()=>{
   const h=await harness(),path='/setup/'+h.setup;
-  const page=await request(h,path,null,null,'GET');assert.equal(page.status,200);assert.equal(page.headers.get('Referrer-Policy'),'same-origin');
+  const page=await request(h,path,null,null,'GET');assert.equal(page.status,200);assert.equal(page.headers.get('Referrer-Policy'),'same-origin');assert.ok(page.headers.get('Content-Security-Policy').includes("form-action 'self';"));
   const post=origin=>h.store.fetch(new Request('https://hey.test'+path,{method:'POST',headers:{Origin:origin},body:new URLSearchParams({password:'test-owner-password-123'})}));
   assert.equal((await post('null')).status,403);assert.equal((await post('https://foreign.test')).status,403);assert.equal(await h.store.get('owner'),undefined);
   assert.equal((await post('https://hey.test')).status,200);assert.ok(await h.store.get('owner'));assert.equal((await post('https://hey.test')).status,409);
@@ -110,7 +110,9 @@ test('OAuth enforces owner login, origin, resource, PKCE, code replay, and refre
   const h=await harness(),salt=to64(crypto.getRandomValues(new Uint8Array(16)));await h.store.put('owner',{salt,hash:await passwordHash('owner-password-123',salt)});
   const registration=await (await request(h,'/oauth/register',{redirect_uris:['https://client.test/callback']},null)).json();const verifier=token(),challenge=to64(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
   const params=new URLSearchParams({client_id:registration.client_id,redirect_uri:'https://client.test/callback',response_type:'code',code_challenge_method:'S256',code_challenge:challenge,resource:'https://hey.test/mcp',state:'state'});
-  const login=await request(h,'/oauth/authorize?'+params,null,null,'GET');assert.equal(login.status,200);const text=await login.text(),pending=text.match(/name="pending" value="([^"]+)"/)[1],csrf=text.match(/name="csrf" value="([^"]+)"/)[1];
+  const login=await request(h,'/oauth/authorize?'+params,null,null,'GET');assert.equal(login.status,200);assert.ok(login.headers.get('Content-Security-Policy').includes("form-action 'self' https://client.test;"));assert.equal(login.headers.get('Referrer-Policy'),'same-origin');
+  const wrongRedirect=new URLSearchParams(params);wrongRedirect.set('redirect_uri','https://foreign.test/callback');assert.equal((await request(h,'/oauth/authorize?'+wrongRedirect,null,null,'GET')).status,400);
+  const text=await login.text(),pending=text.match(/name="pending" value="([^"]+)"/)[1],csrf=text.match(/name="csrf" value="([^"]+)"/)[1];
   const form=new URLSearchParams({pending,csrf,password:'owner-password-123'});const granted=await h.store.fetch(new Request('https://hey.test/oauth/authorize',{method:'POST',headers:{Origin:'https://hey.test'},body:form}));assert.equal(granted.status,302);const code=new URL(granted.headers.get('Location')).searchParams.get('code');
   const exchange=v=>h.store.fetch(new Request('https://hey.test/oauth/token',{method:'POST',body:new URLSearchParams({grant_type:'authorization_code',client_id:registration.client_id,redirect_uri:'https://client.test/callback',code,code_verifier:v,resource:'https://hey.test/mcp'})}));
   assert.equal((await exchange('x'.repeat(43))).status,400);const tokens=await (await exchange(verifier)).json();assert.ok(tokens.access_token);assert.equal((await exchange(verifier)).status,400);

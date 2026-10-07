@@ -11,3 +11,5 @@ No product-complete, universal browser access, 24/7 or fully understood video cl
 Android initial debug APK compilation/signature/ZIP alignment: PASS. Android lint: PASS with 0 errors and 5 recorded warnings. Local emulator UI startup: BLOCKED_HOST_RUNTIME; emulator process exited. No real-phone gate changed. The debug artifact is for testing; production signing remains open.
 
 Owner-form fix: same-origin Referrer-Policy preserves browser form Origin metadata; cross-origin and null-origin POSTs remain rejected. Regression test verifies owner setup, one-use setup and strict origin rejection. Physical browser form retry remains owner-operated.
+
+OAuth callback fix: the login page form-action policy now includes only the validated registered client callback origin, alongside self. Owner setup remains self-only. PKCE, resource binding, registered redirect matching, login CSRF and origin rejection remain enforced. Gateway regression tests pass; real owner plugin retry is still pending.

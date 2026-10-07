@@ -4,7 +4,7 @@ import {shell,landing,setupForm,loginForm,esc} from './ui.js';
 const ACTIVE=new Set(['QUEUED','WAITING_DEVICE','RUNNING','CANCEL_REQUESTED']);
 const TERMINAL=new Set(['DONE','ERROR','UNKNOWN','CANCELLED']);
 const DEVICE_TTL=20000;
-function html(text,status=200) {return new Response(text,{status,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin'}});}
+function html(text,status=200,callbackOrigin=null) {const formAction="'self'"+(callbackOrigin?' '+new URL(callbackOrigin).origin:'');return new Response(text,{status,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action "+formAction+"; base-uri 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin'}});}
 function redirect(uri) {return new Response(null,{status:302,headers:{Location:uri,'Cache-Control':'no-store','Referrer-Policy':'no-referrer'}});}
 
 export default {
@@ -91,7 +91,9 @@ export class HeyStore {
       requireValue(!q.get('scope')||q.get('scope')==='hey:control','INVALID_SCOPE');
       requireValue(await this.get('owner'),'OWNER_SETUP_REQUIRED',503);
       const pending=token(),csrf=token();await this.put('login:'+pending,{clientId:client.client_id,redirect:q.get('redirect_uri'),state:q.get('state')||'',challenge:q.get('code_challenge'),csrf,resource:origin+'/mcp',expiresAt:Date.now()+300000});
-      return html(loginForm(pending,csrf));
+      // Chrome applies form-action to the redirect after a successful POST too.
+      // Only this validated client's registered callback origin is allowed here.
+      return html(loginForm(pending,csrf),200,new URL(q.get('redirect_uri')).origin);
     }
     requireValue(request.method==='POST','METHOD_NOT_ALLOWED',405);
     requireValue(request.headers.get('Origin')===origin,'ORIGIN_DENIED',403);
