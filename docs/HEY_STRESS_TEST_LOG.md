@@ -1244,3 +1244,87 @@ Suggested motion envelope for later prototyping:
 - avoid global animation when only one control changed state.
 
 **Status:** **NOTED / DEFERRED FOR UI POLISH PASS**.
+
+
+---
+
+## 25. 2026-10-07 — Pause recovery UX, repeated-STOP race, and explicit resume
+
+### 25.1 Recovery affordance clarification
+
+After **Settings -> Jeda Hey**, the Settings control remained labeled **Jeda Hey**.
+
+User later confirmed that **Siapkan browser** is available from the Home surface.
+
+Therefore this is **not an absolute recovery dead-end**. The defect is state communication and discoverability:
+
+- the control that paused Hey does not change to a resume state;
+- Settings does not show a clear paused status;
+- recovery requires navigating to another surface and knowing that **Siapkan browser** is the resume path.
+
+**Status:** recovery exists **PASS**, pause/resume UX **NEEDS FIX**.
+
+**Required UX correction:**
+- render persisted owner intent explicitly;
+- after pausing, change the relevant control to **Lanjutkan Hey** or equivalent;
+- show a clear paused state on Home and Settings;
+- make pause/resume a coherent toggle or state machine rather than unrelated controls on separate screens.
+
+### 25.2 Repeated STOP can transiently recreate runtime
+
+Source inspection confirms the current Settings action is hard-coded:
+
+`startService(new Intent(...HeyService...).setAction("STOP"))`
+
+If the service is already stopped, Android may instantiate the service before delivering the STOP action.
+
+Current service order:
+1. `HeyService.onCreate()` sets `current`, starts foreground mode, creates BrowserRuntime, and schedules polling;
+2. `onStartCommand()` later receives `STOP`;
+3. only then owner intent is persisted as PAUSED and `stopSelf()` is called.
+
+Observed during repeated interaction:
+- status transiently moved through ambiguous/active-looking connection states before settling;
+- this is consistent with the service being recreated briefly before processing STOP.
+
+**Status:** **LIFECYCLE RACE / NEEDS FIX**.
+
+**Required correction:**
+- do not use a stopped Service itself as the transport for a pause command;
+- pause state should be changed without recreating the runtime, or service startup must consult persisted owner intent before browser/poll initialization;
+- repeated pause must be idempotent and must never create a short-lived browser/poll session.
+
+### 25.3 Explicit resume through Home
+
+User pressed **Siapkan browser**.
+
+Observed afterward:
+- top-level device `online:true`;
+- `connection:"ONLINE"`;
+- `browser:"READY"`;
+- `control:"AGENT"`;
+- audio remained `CONSENT_ENDED`, as expected because MediaProjection consent is separate.
+
+A new safe navigation was then submitted.
+
+Observed:
+- command queued normally;
+- completed `DONE`;
+- `verified:true`;
+- resulting public page matched the requested destination.
+
+**Conclusion:** explicit owner resume successfully restores the service/browser command path.
+
+**Status:** **PASS**.
+
+### 25.4 Runtime identity after pause/resume
+
+After service recreation, browser tab identifiers were different from the pre-pause runtime.
+
+This confirms that pause/resume currently recreates browser runtime identity rather than preserving the exact in-memory tab session identity.
+
+**Status:** **EXPECTED FROM CURRENT IMPLEMENTATION / RETENTION POLICY REVIEW**.
+
+Future decision:
+- if exact tab/session persistence is a product requirement, persist/restore it deliberately;
+- otherwise document that pause stops the runtime and resume creates a new runtime boundary.
