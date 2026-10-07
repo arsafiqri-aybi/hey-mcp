@@ -49,7 +49,7 @@
     "privatePlugin": "CREATED_PRIVATE_METADATA_VERIFIED",
     "androidLint": "PASS_0_ERRORS_6_WARNINGS",
     "emulatorUI": "BLOCKED_HOST_RUNTIME",
-    "androidVerifier": "PASS_7_VERIFIER_AND_6_SERVICE_POLICY_CASES",
+    "androidVerifier": "PASS_7_VERIFIER_AND_8_SERVICE_POLICY_CASES",
     "visualEvidence": "RETEST_REQUIRED_AFTER_EMPIRICAL_FAILURE",
     "serviceRecovery": "SOURCE_REPAIRED_PHYSICAL_RETEST_REQUIRED"
   },
