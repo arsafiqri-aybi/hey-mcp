@@ -4,7 +4,7 @@ import {shell,landing,setupForm,loginForm,esc} from './ui.js';
 const ACTIVE=new Set(['QUEUED','WAITING_DEVICE','RUNNING','CANCEL_REQUESTED']);
 const TERMINAL=new Set(['DONE','ERROR','UNKNOWN','CANCELLED']);
 const DEVICE_TTL=20000;
-function html(text,status=200) {return new Response(text,{status,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'}});}
+function html(text,status=200) {return new Response(text,{status,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin'}});}
 function redirect(uri) {return new Response(null,{status:302,headers:{Location:uri,'Cache-Control':'no-store','Referrer-Policy':'no-referrer'}});}
 
 export default {

@@ -31,6 +31,13 @@ test('anonymous MCP denied, health discloses no device or credentials',async()=>
   const h=await harness();assert.equal((await request(h,'/mcp',{jsonrpc:'2.0',id:1,method:'tools/list'},null)).status,401);
   const health=await worker.fetch(new Request('https://hey.test/health'),{});assert.equal((await health.json()).deviceVerified,false);
 });
+test('owner forms preserve same-origin POST metadata and reject null or foreign origins',async()=>{
+  const h=await harness(),path='/setup/'+h.setup;
+  const page=await request(h,path,null,null,'GET');assert.equal(page.status,200);assert.equal(page.headers.get('Referrer-Policy'),'same-origin');
+  const post=origin=>h.store.fetch(new Request('https://hey.test'+path,{method:'POST',headers:{Origin:origin},body:new URLSearchParams({password:'test-owner-password-123'})}));
+  assert.equal((await post('null')).status,403);assert.equal((await post('https://foreign.test')).status,403);assert.equal(await h.store.get('owner'),undefined);
+  assert.equal((await post('https://hey.test')).status,200);assert.ok(await h.store.get('owner'));assert.equal((await post('https://hey.test')).status,409);
+});
 test('MCP discovery advertises schemas without starting any browser',async()=>{
   const h=await harness();const r=await request(h,'/mcp',{jsonrpc:'2.0',id:1,method:'initialize',params:{protocolVersion:'2025-06-18'}});assert.equal((await r.json()).result.serverInfo.name,'Hey by Ars');
   const list=await (await request(h,'/mcp',{jsonrpc:'2.0',id:2,method:'tools/list'})).json();assert.equal(list.result.tools.length,9);assert.equal(h.storage.data.size,0);
