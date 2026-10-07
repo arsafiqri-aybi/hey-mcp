@@ -1141,3 +1141,30 @@ Observed:
 **Status:** **PASS**.
 
 **Preserve:** network-loss failure of one task must not poison the next task.
+
+
+---
+
+## 23. 2026-10-07 — Reboot recovery test intentionally skipped
+
+### 23.1 Decision
+
+The planned full-device reboot test was intentionally skipped.
+
+Source inspection already established:
+- no `BOOT_COMPLETED` receiver is declared;
+- `HeyService.onStartCommand(...)` returns `START_NOT_STICKY`;
+- MediaProjection/audio consent cannot be expected to survive a full process/device restart.
+
+Therefore automatic post-reboot Hey recovery is **not part of the current implementation contract**.
+
+### 23.2 Classification
+
+This is **not recorded as a verified PASS**, because no reboot was executed.
+
+Project acceptance classification:
+- **SKIPPED / EXPECTED BY ANDROID DESIGN**
+- **NOT A CURRENT PRODUCT DEFECT**
+- future boot persistence may be added only if explicitly desired as a product feature.
+
+**Preserve truthfulness:** do not label unexecuted platform-behavior assumptions as empirically verified tests.
