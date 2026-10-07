@@ -1809,3 +1809,66 @@ Observed source behavior:
 - cookies flushed on page completion and runtime close.
 
 **Status:** reasonable for authenticated browser sessions; privacy/security behavior should remain covered by future cookie-isolation tests.
+
+
+---
+
+## 33. 2026-10-07 — Android credential storage, gateway transport, and wake guard audit
+
+### 33.1 Secure local credential storage
+
+`SecureStore` stores values using:
+- Android Keystore-managed AES key;
+- AES/GCM/NoPadding;
+- fresh IV per write;
+- app-private SharedPreferences containing only IV + ciphertext;
+- synchronous persistence failure detection for writes.
+
+Sensitive values such as device token and gateway state are therefore not stored as plaintext SharedPreferences.
+
+**Status:** **PASS**.
+
+Design note:
+- the key is intentionally usable without biometric/user-authentication gating so the background service can operate unattended;
+- this is appropriate for the current product model.
+
+### 33.2 Gateway origin pinning
+
+Android `Transport` accepts only the exact compiled production gateway origin and requires HTTPS.
+
+Observed source behavior:
+- exact gateway string check;
+- HTTPS required;
+- redirects disabled with `setInstanceFollowRedirects(false)`;
+- bearer token attached only after gateway validation;
+- connection/read timeouts enforced;
+- response body bounded to 1 MB.
+
+**Security consequence:** device bearer credentials cannot be silently forwarded to a redirect destination by the transport layer.
+
+**Status:** **PASS**.
+
+### 33.3 Owner pause guard in FCM WakeService
+
+`WakeService.onMessageReceived()` ignores a wake message when:
+- message type is not `hey_task`;
+- device is not paired;
+- persisted `ownerIntent` is `PAUSED`.
+
+Only high-priority FCM messages proceed to service startup.
+
+If Android refuses foreground-service start, Hey records `USER_RESUME_REQUIRED` and shows a resume notification.
+
+**Status:** **PASS at source level**.
+
+### 33.4 Important architecture implication
+
+The Android wake layer already respects owner pause, but the MCP/gateway enqueue path does not currently know that the owner is paused.
+
+Therefore the remaining owner-pause defect is primarily:
+- state propagation to gateway;
+- command-intake semantics;
+- active-task finalization during pause;
+- stale health cleanup.
+
+Do not remove the existing local `ownerIntent` guard while fixing the server-side pause contract.
