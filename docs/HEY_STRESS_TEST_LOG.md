@@ -750,3 +750,42 @@ For every future test batch:
 4. retain prior evidence;
 5. when fixed, add a retest entry with the commit/version tested;
 6. never silently rewrite history to make an old failure disappear.
+
+
+---
+
+## 16. 2026-10-07 — Audio re-consent follow-up
+
+### 16.1 Direct navigate -> immediate watch
+
+**Goal:** determine whether the start-at-zero race can be avoided by eliminating explicit seek/play round trips.
+
+Sequence:
+1. audio state confirmed `CAPTURING`;
+2. navigate directly to generic HTML5 MP4;
+3. navigation observed media at `currentTime:0`, `paused:true`, `readyState:0`;
+4. call `hey_watch(audioRequired:true)` immediately after navigation reached terminal state.
+
+Observed:
+- watch failed immediately with `PLAYBACK_MUST_START_AT_ZERO`;
+- `frames:0`;
+- `audioChunks:0`;
+- `lastMediaTime:-1`;
+- `coverageComplete:false`;
+- `audioCoverageComplete:false`;
+- `understandingVerified:false`.
+
+**Conclusion:** simply reducing orchestration latency does not solve the issue. The current watch admission gate itself is incompatible with the asynchronous transition from not-ready/paused media into autoplaying/playing media.
+
+**Required correction:** atomic watch must own media readiness, seek, playback start, and capture start as one device-side transaction.
+
+**Status:** **FAIL P0**.
+
+### 16.2 Audio status versus end-to-end proof
+
+After user re-consent:
+- health reports `audio: CAPTURING`;
+- this proves the capture session is active;
+- it does **not** yet prove intelligible playback audio can be captured end-to-end because watch is rejected before evidence collection.
+
+**Status:** audio session recovery **PASS**; actual audio signal verification **BLOCKED by P0-B**.
