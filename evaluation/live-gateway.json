@@ -1,0 +1,71 @@
+{
+  "scope": "Real Cloudflare HTTP and Durable Object; synthetic protocol client only. Android/runtime/audio/wake not tested.",
+  "timestamp": "2026-10-07T06:59:49.068636+00:00",
+  "checks": [
+    {
+      "check": "public health separates gateway from device verification",
+      "status": "PASS"
+    },
+    {
+      "check": "OAuth metadata resource matches MCP",
+      "status": "PASS"
+    },
+    {
+      "check": "anonymous MCP denied",
+      "status": "PASS"
+    },
+    {
+      "check": "live initialize works",
+      "status": "PASS"
+    },
+    {
+      "check": "live tools discovery has nine tools",
+      "status": "PASS"
+    },
+    {
+      "check": "owner setup form available",
+      "status": "PASS"
+    },
+    {
+      "check": "device credential issued",
+      "status": "PASS"
+    },
+    {
+      "check": "live pairing code is single use",
+      "status": "PASS"
+    },
+    {
+      "check": "live authenticated heartbeat",
+      "status": "PASS"
+    },
+    {
+      "check": "durable command dispatched with digest",
+      "status": "PASS"
+    },
+    {
+      "check": "evidence accepted by real Durable Object",
+      "status": "PASS"
+    },
+    {
+      "check": "result accepted",
+      "status": "PASS"
+    },
+    {
+      "check": "same receipt retry accepted",
+      "status": "PASS"
+    },
+    {
+      "check": "evidence decrypted and returned without device verification",
+      "status": "PASS"
+    },
+    {
+      "check": "protocol test device revoked",
+      "status": "PASS"
+    },
+    {
+      "check": "revoked device denied",
+      "status": "PASS"
+    }
+  ],
+  "count": 16
+}

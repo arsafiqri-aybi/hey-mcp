@@ -2,12 +2,61 @@
   "project": "Hey by Ars",
   "version": "0.1.0",
   "status": "BUILD_IN_PROGRESS",
-  "repositories": ["arsafiqri-aybi/hey-android", "arsafiqri-aybi/hey-mcp"],
-  "protectedConstraints": ["new separate project", "app-owned browser profile and render surface", "user can use other phone apps", "no Termux, ADB, port or IP setup in normal use", "pair once", "one shared connection state", "no separate connection popup", "direct audiovisual observations", "explicit actions do not require repetitive confirmation", "credentials excluded from telemetry", "completion requires observed evidence"],
-  "components": ["Android app", "private Chromium browser surface", "connection service", "visual observer", "audio observer", "task executor", "verification and recovery", "gateway", "MCP", "private plugin"],
+  "repositories": [
+    "arsafiqri-aybi/hey-android",
+    "arsafiqri-aybi/hey-mcp"
+  ],
+  "protectedConstraints": [
+    "new separate project",
+    "app-owned browser profile and render surface",
+    "user can use other phone apps",
+    "no Termux, ADB, port or IP setup in normal use",
+    "pair once",
+    "one shared connection state",
+    "no separate connection popup",
+    "direct audiovisual observations",
+    "explicit actions do not require repetitive confirmation",
+    "credentials excluded from telemetry",
+    "completion requires observed evidence"
+  ],
+  "components": [
+    "Android app",
+    "private Chromium browser surface",
+    "connection service",
+    "visual observer",
+    "audio observer",
+    "task executor",
+    "verification and recovery",
+    "gateway",
+    "MCP",
+    "private plugin"
+  ],
   "candidateRuntime": "Android WebView Chromium on an app-owned VirtualDisplay and Presentation. It is a candidate, not full browser-parity certification.",
-  "gates": {"source": "IN_PROGRESS", "gatewayTests": "PASS", "androidBuild": "IN_PROGRESS", "gatewayDeployment": "NOT_RUN", "privateDisplayRuntime": "NOT_RUN", "vivoBackground": "NOT_RUN", "pushWake": "BLOCKED_FIREBASE_CONFIGURATION", "audioCapture": "NOT_RUN", "completeVideoObservation": "NOT_RUN", "googleLoginCompatibility": "UNRESOLVED_ENGINE_LIMIT", "pluginConnection": "NOT_RUN", "releaseSigning": "NOT_RUN"},
+  "gates": {
+    "source": "IMPLEMENTED_INITIAL_BASELINE",
+    "gatewayTests": "PASS",
+    "androidBuild": "PASS_DEBUG_APK",
+    "gatewayDeployment": "PASS",
+    "privateDisplayRuntime": "NOT_RUN",
+    "vivoBackground": "NOT_RUN",
+    "pushWake": "BLOCKED_FIREBASE_CONFIGURATION",
+    "audioCapture": "NOT_RUN",
+    "completeVideoObservation": "NOT_RUN",
+    "googleLoginCompatibility": "UNRESOLVED_ENGINE_LIMIT",
+    "pluginConnection": "NOT_RUN",
+    "releaseSigning": "NOT_RUN",
+    "gatewayLiveProtocol": "PASS_16_SYNTHETIC_CLIENT_CHECKS",
+    "privatePlugin": "CREATED_PRIVATE_METADATA_VERIFIED",
+    "androidLint": "PASS_0_ERRORS_5_WARNINGS",
+    "emulatorUI": "BLOCKED_HOST_RUNTIME"
+  },
   "completionRule": "No product COMPLETE claim until required runtime, wake, media, target-device and client integration gates pass. A build or mock device is not physical evidence. Unfinished target capabilities stay in the backlog and are not removed.",
-  "replanTriggers": ["virtual display stops rendering when app is backgrounded", "WebView browser compatibility fails required sites", "capture policy prevents required audio", "OEM wake lifecycle fails", "target host does not ingest MCP audio"],
+  "replanTriggers": [
+    "virtual display stops rendering when app is backgrounded",
+    "WebView browser compatibility fails required sites",
+    "capture policy prevents required audio",
+    "OEM wake lifecycle fails",
+    "target host does not ingest MCP audio"
+  ],
   "sourceBaseline": "hey-by-ars-project-concept.md supplied by owner on 2026-10-07"
 }

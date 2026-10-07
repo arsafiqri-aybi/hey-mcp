@@ -1,0 +1,17 @@
+{
+  "worker": "hey-gateway",
+  "url": "https://hey-gateway.arsafiqri-ua03.workers.dev/mcp",
+  "deploymentId": "c3979f5570bd460d992b7a3e4af563ac",
+  "sourceCommit": "c24360b2feed42f29535902235416c947e835573",
+  "modules": [
+    "worker.js",
+    "core.js",
+    "ui.js"
+  ],
+  "namespace": "HeyStore",
+  "migration": "v1",
+  "plugin": "https://chatgpt.com/plugins/plugins_6ac5ed4c9c1c8191abf36ba243d09d90",
+  "liveProtocolChecks": 16,
+  "ownerSetup": "AWAITING_OWNER",
+  "deviceVerified": false
+}
