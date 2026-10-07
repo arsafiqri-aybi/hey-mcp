@@ -958,3 +958,34 @@ Across fabricated refs, fabricated tab IDs, last-tab protection, viewport-relate
 - `POSTCONDITION_UNCERTAIN`.
 
 **Required correction:** preserve conservative safety while returning precise machine-readable reasons so the agent can distinguish retryable freshness issues, policy blocks, nonexistent resources, and verifier uncertainty.
+
+
+---
+
+## 19. 2026-10-07 — Handoff during active task: first attempt inconclusive
+
+### 19.1 Intended test
+
+Goal:
+- start a long-running `watch`;
+- while task status is `RUNNING`, user taps **Ambil alih**;
+- verify whether ownership transfer cancels/stops the active task or allows it to continue.
+
+### 19.2 First attempt
+
+Observed before user action:
+- task reached `RUNNING`;
+- media remained `currentTime:0`, `paused:true`;
+- evidence sampling was active.
+
+Observed when checked after user reported takeover:
+- device control was `HUMAN`;
+- the watch task was already terminal `ERROR`;
+- reason: `WATCH_LIMIT_REACHED`;
+- task had produced multiple timestamped samples before terminating.
+
+Because the task became terminal before takeover timing could be proven, this attempt **cannot establish** whether HUMAN takeover interrupts an already-running task.
+
+**Status:** **RETEST REQUIRED**.
+
+**Harness note:** do not label PASS/FAIL unless task is confirmed RUNNING at the moment control changes to HUMAN.
