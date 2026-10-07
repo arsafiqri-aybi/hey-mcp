@@ -9,7 +9,7 @@ class Storage {
   async get(k){return structuredClone(this.data.get(k));}
   async put(k,v){this.data.set(k,structuredClone(v));}
   async delete(k){return this.data.delete(k);}
-  async list({prefix}){return new Map([...this.data].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,structuredClone(v)]));}
+  async list({prefix,startAfter,limit=1000}){return new Map([...this.data].filter(([k])=>k.startsWith(prefix)&&(!startAfter||k>startAfter)).sort(([a],[b])=>a.localeCompare(b)).slice(0,limit).map(([k,v])=>[k,structuredClone(v)]));}
   async setAlarm(at){this.alarm=at;}
 }
 async function harness(){const storage=new Storage(),control=token(),setup=token(),env={STATE_KEY:to64(crypto.getRandomValues(new Uint8Array(32))),CONTROL_HASH:await hash(control),SETUP_HASH:await hash(setup),SETUP_EXPIRES:String(Date.now()+100000)};const store=new HeyStore({storage},env);return {store,storage,env,control,setup};}
@@ -25,7 +25,7 @@ test('canonical action digests are stable and command schema rejects unknown fie
   for(const url of ['http://example.com','https://localhost','https://127.0.0.1','https://[::1]','https://example.com:8080','https://u:p@example.com'])assert.throws(()=>publicUrl(url));
 });
 test('sensitive commands are encrypted, authenticated, and cannot be tampered with',async()=>{
-  const key=to64(crypto.getRandomValues(new Uint8Array(32))),s=await seal({password:'sensitive-value'},key);assert.ok(!JSON.stringify(s).includes('sensitive-value'));assert.deepEqual(await unseal(s,key),{password:'sensitive-value'});s.data='A'+s.data.slice(1);await assert.rejects(()=>unseal(s,key));
+  const key=to64(crypto.getRandomValues(new Uint8Array(32))),s=await seal({password:'sensitive-value'},key);assert.ok(!JSON.stringify(s).includes('sensitive-value'));assert.deepEqual(await unseal(s,key),{password:'sensitive-value'});s.data=(s.data[0]==='A'?'B':'A')+s.data.slice(1);await assert.rejects(()=>unseal(s,key));
 });
 test('anonymous MCP denied, health discloses no device or credentials',async()=>{
   const h=await harness();assert.equal((await request(h,'/mcp',{jsonrpc:'2.0',id:1,method:'tools/list'},null)).status,401);
@@ -117,4 +117,59 @@ test('OAuth enforces owner login, origin, resource, PKCE, code replay, and refre
   const exchange=v=>h.store.fetch(new Request('https://hey.test/oauth/token',{method:'POST',body:new URLSearchParams({grant_type:'authorization_code',client_id:registration.client_id,redirect_uri:'https://client.test/callback',code,code_verifier:v,resource:'https://hey.test/mcp'})}));
   assert.equal((await exchange('x'.repeat(43))).status,400);const tokens=await (await exchange(verifier)).json();assert.ok(tokens.access_token);assert.equal((await exchange(verifier)).status,400);
   const refresh=()=>h.store.fetch(new Request('https://hey.test/oauth/token',{method:'POST',body:new URLSearchParams({grant_type:'refresh_token',client_id:registration.client_id,refresh_token:tokens.refresh_token,resource:'https://hey.test/mcp'})}));assert.equal((await refresh()).status,200);assert.equal((await refresh()).status,400);
+});
+
+
+test('owner pause rejects intake, closes queued work, and resumes only on explicit intent',async()=>{
+  const h=await harness(),d=await pair(h),t=await h.store.enqueue(d.deviceId,action(),{method:'navigate',payload:{url:'https://example.com'}},'https://hey.test');
+  assert.equal((await request(h,'/api/device/intent',{ownerIntent:'PAUSED'},d.deviceToken)).status,200);
+  assert.equal((await h.store.get('task:'+t.taskId)).reason,'OWNER_PAUSED');
+  await assert.rejects(()=>h.store.enqueue(d.deviceId,action(),{method:'observe',payload:{}},'https://hey.test'),/OWNER_PAUSED/);
+  assert.equal((await poll(h,d)).data.command,null);
+  assert.equal((await request(h,'/api/device/intent',{ownerIntent:'ACTIVE'},d.deviceToken)).status,200);
+  const fresh=await h.store.enqueue(d.deviceId,action(),{method:'observe',payload:{}},'https://hey.test');assert.equal((await poll(h,d)).data.command.taskId,fresh.taskId);
+});
+test('pause terminal receipt can reconcile UNKNOWN only as owner cancellation',async()=>{
+  const h=await harness(),d=await pair(h),t=await h.store.enqueue(d.deviceId,action(),{method:'watch',payload:{maxSeconds:8,audioRequired:false}},'https://hey.test'),p=(await poll(h,d)).data.command;
+  const saved=await h.store.get('task:'+t.taskId);saved.leaseUntil=Date.now()-1;await h.store.put('task:'+t.taskId,saved);await h.store.alarm();
+  const receipt={taskId:t.taskId,generation:p.generation,digest:p.digest,status:'DONE',verified:true,result:{},reason:null};assert.equal((await request(h,'/api/device/result',receipt,d.deviceToken)).status,409);
+  await request(h,'/api/device/intent',{ownerIntent:'PAUSED'},d.deviceToken);
+  assert.equal((await request(h,'/api/device/result',{...receipt,status:'CANCELLED',verified:false,reason:'OWNER_PAUSED'},d.deviceToken)).status,200);
+  assert.equal((await h.store.get('task:'+t.taskId)).status,'CANCELLED');
+});
+test('offline health is explicitly stale and never advertises an active old browser',async()=>{
+  const h=await harness(),d=await pair(h);await poll(h,d,{health:{connection:'ONLINE',browser:'READY',audio:'CAPTURING',taskId:'old',progress:{frames:22}}});
+  const saved=await h.store.get('device:'+d.deviceId);saved.lastSeen=Date.now()-21000;await h.store.put('device:'+d.deviceId,saved);
+  const state=(await h.store.devices())[0];assert.equal(state.online,false);assert.equal(state.health.stale,true);assert.equal(state.health.browser,'UNKNOWN');assert.equal(state.health.taskId,'');assert.deepEqual(state.health.progress,{});
+});
+test('unrelated task progress is discarded unless ID and generation both match',async()=>{
+  const h=await harness(),d=await pair(h),t=await h.store.enqueue(d.deviceId,action(),{method:'observe',payload:{}},'https://hey.test'),p=(await poll(h,d)).data.command;
+  await poll(h,d,{activeTaskId:t.taskId,progressTaskId:'other',progressGeneration:p.generation,progress:{frames:99}});assert.equal((await h.store.get('task:'+t.taskId)).progress,null);
+  await poll(h,d,{activeTaskId:t.taskId,progressTaskId:t.taskId,progressGeneration:p.generation,progress:{phase:'observe'}});assert.deepEqual((await h.store.get('task:'+t.taskId)).progress,{phase:'observe'});
+});
+test('renewal is retry-safe, bounded, and old token is revoked after replacement heartbeat',async()=>{
+  const h=await harness(),d=await pair(h),first=await (await request(h,'/api/device/renew',{},d.deviceToken)).json(),retry=await (await request(h,'/api/device/renew',{},d.deviceToken)).json();assert.equal(first.deviceToken,retry.deviceToken);
+  assert.ok((await h.store.get('credential:'+await hash(d.deviceToken))).expiresAt<=Date.now()+120000);
+  assert.equal((await poll(h,{...d,deviceToken:first.deviceToken})).status,200);assert.equal((await poll(h,d)).status,401);
+});
+test('action receipts beyond 10000 remain usable without a lifetime dispatch ceiling',async()=>{
+  const h=await harness(),d=await pair(h);for(let i=0;i<10010;i++)await h.store.put('action:'+d.deviceId+':history-'+i,{digest:'old',taskId:'old'});
+  const a=action(),t=await h.store.enqueue(d.deviceId,a,{method:'observe',payload:{}},'https://hey.test');assert.ok(t.taskId);
+  assert.equal((await h.store.enqueue(d.deviceId,a,{method:'observe',payload:{}},'https://hey.test')).taskId,t.taskId);
+  assert.equal((await h.store.list('action:')).size,10011);
+});
+test('cancel overwrites queued push error and remains idempotent while running',async()=>{
+  const h=await harness(),d=await pair(h),t=await h.store.enqueue(d.deviceId,action(),{method:'observe',payload:{}},'https://hey.test');assert.equal((await h.store.cancel(t.taskId)).reason,'OWNER_CANCELLED');
+  const fresh=await h.store.enqueue(d.deviceId,action(),{method:'observe',payload:{}},'https://hey.test');await poll(h,d);await h.store.cancel(fresh.taskId);assert.equal((await h.store.cancel(fresh.taskId)).status,'CANCEL_REQUESTED');
+});
+test('canonical host rules and scroll direction contract are consistent',()=>{
+  for(const url of ['https://localhost./','https://a.localhost./','https://a.internal./','https://127.1/','https://2130706433/'])assert.throws(()=>publicUrl(url));
+  assert.equal(publicUrl('https://example.com./'),'https://example.com/');
+  assert.deepEqual(validateCommand({method:'action',payload:{action:'scroll',value:'down'}}).payload,{action:'scroll',x:0,y:600});
+  assert.throws(()=>validateCommand({method:'action',payload:{action:'scroll',value:'down',y:99}}),/AMBIGUOUS_SCROLL/);
+});
+test('canvas fallback cannot certify actual video coverage',async()=>{
+  const h=await harness(),d=await pair(h),t=await h.store.enqueue(d.deviceId,action(),{method:'watch',payload:{maxSeconds:8,audioRequired:false}},'https://hey.test'),p=(await poll(h,d)).data.command;
+  for(let i=0;i<2;i++)assert.equal((await request(h,'/api/device/evidence',{taskId:p.taskId,generation:p.generation,digest:p.digest,sequence:i,observation:{observedAt:Date.now()+i*1000,media:[{currentTime:i,ended:i===1}],image:{mimeType:'image/jpeg',data:'AAAA'},visualMediaVerified:false,captureMode:'DOCUMENT_CANVAS'}},d.deviceToken)).status,200);
+  assert.equal((await request(h,'/api/device/result',{taskId:p.taskId,generation:p.generation,digest:p.digest,status:'DONE',verified:true,result:{coverageComplete:true,playbackEnded:true}},d.deviceToken)).status,400);
 });

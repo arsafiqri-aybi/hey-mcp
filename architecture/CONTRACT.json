@@ -1,7 +1,7 @@
 {
   "project": "Hey by Ars",
-  "version": "0.1.0",
-  "status": "BUILD_IN_PROGRESS",
+  "version": "0.2.0",
+  "status": "REPAIR_IMPLEMENTED_PHYSICAL_GATES_OPEN",
   "repositories": [
     "arsafiqri-aybi/hey-android",
     "arsafiqri-aybi/hey-mcp"
@@ -31,24 +31,26 @@
     "MCP",
     "private plugin"
   ],
-  "candidateRuntime": "Android WebView Chromium on an app-owned VirtualDisplay and Presentation. It is a candidate, not full browser-parity certification.",
+  "candidateRuntime": "One app-owned WebView per tab reparented between Activity and VirtualDisplay Presentation; fresh bounded PixelCopy capture with explicitly non-media-certified document fallback. Physical runtime remains a release gate.",
   "gates": {
-    "source": "IMPLEMENTED_INITIAL_BASELINE",
-    "gatewayTests": "PASS",
-    "androidBuild": "PASS_DEBUG_APK",
-    "gatewayDeployment": "PASS",
-    "privateDisplayRuntime": "NOT_RUN",
-    "vivoBackground": "NOT_RUN",
+    "source": "IMPLEMENTED_P0_REPAIR",
+    "gatewayTests": "PASS_28_CASES",
+    "androidBuild": "PASS_DEBUG_AND_UNSIGNED_RELEASE",
+    "gatewayDeployment": "PENDING_0_2_0_UPLOAD",
+    "privateDisplayRuntime": "RETEST_REQUIRED_AFTER_EMPIRICAL_FAILURE",
+    "vivoBackground": "PRIOR_BASELINE_PASS_RETEST_REQUIRED_0_2_0",
     "pushWake": "BLOCKED_FIREBASE_CONFIGURATION",
-    "audioCapture": "NOT_RUN",
-    "completeVideoObservation": "NOT_RUN",
+    "audioCapture": "RETEST_REQUIRED_CONSENT_LIFECYCLE_FIX",
+    "completeVideoObservation": "RETEST_REQUIRED_AFTER_EMPIRICAL_FAILURE",
     "googleLoginCompatibility": "UNRESOLVED_ENGINE_LIMIT",
-    "pluginConnection": "NOT_RUN",
-    "releaseSigning": "NOT_RUN",
+    "pluginConnection": "PRIOR_CONNECTED_GATEWAY_RECHECK_REQUIRED",
+    "releaseSigning": "BLOCKED_ORIGINAL_DEBUG_KEY_NOT_RECOVERED",
     "gatewayLiveProtocol": "PASS_16_SYNTHETIC_CLIENT_CHECKS",
     "privatePlugin": "CREATED_PRIVATE_METADATA_VERIFIED",
-    "androidLint": "PASS_0_ERRORS_5_WARNINGS",
-    "emulatorUI": "BLOCKED_HOST_RUNTIME"
+    "androidLint": "PASS_0_ERRORS_4_WARNINGS",
+    "emulatorUI": "BLOCKED_HOST_RUNTIME",
+    "androidVerifier": "PASS_7_CASES",
+    "visualEvidence": "RETEST_REQUIRED_AFTER_EMPIRICAL_FAILURE"
   },
   "completionRule": "No product COMPLETE claim until required runtime, wake, media, target-device and client integration gates pass. A build or mock device is not physical evidence. Unfinished target capabilities stay in the backlog and are not removed.",
   "replanTriggers": [

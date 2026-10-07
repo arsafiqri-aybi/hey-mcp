@@ -27,8 +27,15 @@ export class HeyStore {
     }});this.tail=run.then(()=>{},()=>{});return run;
   }
   async get(key) {return this.storage.get(key);}
-  async put(key,value) {return this.storage.put(key,value);}
-  async list(prefix) {return this.storage.list({prefix});}
+  async put(key,value) {await this.storage.put(key,value);if(key.startsWith('task:')&&TERMINAL.has(value.status)){await this.storage.delete('active:'+value.taskId);if(value.evidenceCount)await this.storage.put('retention:'+String(value.updatedAt+72*3600000).padStart(16,'0')+':'+value.taskId,value.taskId);}}
+  async list(prefix) {
+    const all=new Map();let startAfter;
+    for(;;){const page=await this.storage.list({prefix,limit:1000,...(startAfter?{startAfter}: {})});for(const [k,v] of page)all.set(k,v);if(page.size<1000)break;const next=[...page.keys()].at(-1);if(next===startAfter)throw new Fault('STORAGE_PAGINATION_FAILED',500);startAfter=next;}return all;
+  }
+  async activeTasks() {
+    if(!await this.get('activeIndexVersion')){for(const t of (await this.list('task:')).values()){if(ACTIVE.has(t.status))await this.put('active:'+t.taskId,t.taskId);else if(t.evidenceCount)await this.put('retention:'+String(t.updatedAt+72*3600000).padStart(16,'0')+':'+t.taskId,t.taskId);}await this.put('activeIndexVersion',1);}
+    const out=[];for(const [key,taskId] of await this.list('active:')){const t=await this.get('task:'+taskId);if(t&&ACTIVE.has(t.status))out.push(t);else await this.storage.delete(key);}return out;
+  }
   async grant(kind,data,seconds=3600) {const value=token();await this.put('credential:'+await hash(value),{kind,...data,expiresAt:Date.now()+seconds*1000});return value;}
   async auth(request,kind) {
     const header=request.headers.get('Authorization')||'';
@@ -53,7 +60,8 @@ export class HeyStore {
     if(p==='/api/device/result'&&request.method==='POST')return this.deviceResult(request);
     if(p==='/api/device/evidence'&&request.method==='POST')return this.evidence(request);
     if(p==='/api/device/push'&&request.method==='POST')return this.devicePush(request);
-    if(p==='/api/device/renew'&&request.method==='POST') {const a=await this.auth(request,'device');return json({deviceToken:await this.grant('device',{deviceId:a.deviceId},86400*30)});}
+    if(p==='/api/device/renew'&&request.method==='POST')return this.renewDevice(request);
+    if(p==='/api/device/intent'&&request.method==='POST')return this.deviceIntent(request);
     if(p==='/api/config'&&request.method==='GET')return json({gateway:u.origin,firebase:this.env.FIREBASE_PUBLIC?JSON.parse(this.env.FIREBASE_PUBLIC):null,wakeConfigured:!!this.env.FCM_SERVICE_ACCOUNT});
     if(p==='/api/device/revoke'&&request.method==='POST') {await this.auth(request,'control');const b=await body(request);const d=await this.get('device:'+b.deviceId);requireValue(d,'DEVICE_NOT_FOUND',404);d.revoked=true;await this.put('device:'+d.deviceId,d);return json({revoked:true});}
     if(p==='/mcp')return this.mcp(request);
@@ -141,19 +149,47 @@ export class HeyStore {
     const deviceId=id();await this.put('device:'+deviceId,{deviceId,label:r.label,createdAt:Date.now(),lastSeen:0,generation:0,revoked:false});await this.storage.delete(k);
     return json({deviceId,deviceToken:await this.grant('device',{deviceId},86400*30),protocolVersion:1});
   }
+  async renewDevice(request) {
+    const a=await this.auth(request,'device');if(a.predecessor)await this.storage.delete('credential:'+a.predecessor);const oldHash=await hash(request.headers.get('Authorization').slice(7)),key='rotation:'+oldHash;
+    const pending=await this.get(key);
+    if(pending&&pending.expiresAt>Date.now())return json({deviceToken:await unseal(pending.token,this.env.STATE_KEY),overlapSeconds:120});
+    const value=await this.grant('device',{deviceId:a.deviceId,predecessor:oldHash},86400*30);
+    // Idempotent renewal with bounded crash-safe handoff. Old token cannot extend its own validity.
+    a.expiresAt=Math.min(a.expiresAt,Date.now()+120000);await this.put('credential:'+oldHash,a);
+    await this.put(key,{token:await seal(value,this.env.STATE_KEY),expiresAt:a.expiresAt});
+    return json({deviceToken:value,overlapSeconds:120});
+  }
+  async deviceIntent(request) {
+    const a=await this.auth(request,'device'),b=await body(request),d=await this.get('device:'+a.deviceId);
+    requireValue(['ACTIVE','PAUSED'].includes(b.ownerIntent),'INVALID_OWNER_INTENT');
+    d.ownerIntent=b.ownerIntent;await this.put('device:'+d.deviceId,d);
+    if(b.ownerIntent==='PAUSED')for(const t of await this.activeTasks())if(t.deviceId===d.deviceId&&ACTIVE.has(t.status)) {
+      t.cancel=true;t.reason='OWNER_PAUSED';t.updatedAt=Date.now();
+      t.status=['RUNNING','CANCEL_REQUESTED'].includes(t.status)?'CANCEL_REQUESTED':'CANCELLED';
+      if(t.status==='CANCELLED')delete t.command;await this.put('task:'+t.taskId,t);
+    }
+    return json({ownerIntent:d.ownerIntent});
+  }
   async devices() {
-    const out=[];for(const d of (await this.list('device:')).values())out.push({deviceId:d.deviceId,label:d.label,revoked:d.revoked,lastSeen:d.lastSeen,online:!d.revoked&&Date.now()-d.lastSeen<DEVICE_TTL,health:d.health||null,wakeConfigured:!!this.env.FCM_SERVICE_ACCOUNT&&!!d.pushToken});return out;
+    const out=[];for(const d of (await this.list('device:')).values()) {
+      const online=!d.revoked&&Date.now()-d.lastSeen<DEVICE_TTL,health=d.health?{...d.health}:{};
+      health.stale=!online;health.observedAt=d.lastSeen||null;health.ownerIntent=d.ownerIntent||'ACTIVE';
+      if(!online)Object.assign(health,{connection:d.ownerIntent==='PAUSED'?'PAUSED':'OFFLINE',browser:'UNKNOWN',audio:'UNKNOWN',taskId:'',progress:{}});
+      else if(health.taskId){const t=await this.get('task:'+health.taskId);if(!t||!ACTIVE.has(t.status)){health.taskId='';health.progress={};}}
+      out.push({deviceId:d.deviceId,label:d.label,revoked:d.revoked,lastSeen:d.lastSeen,online,ownerIntent:d.ownerIntent||'ACTIVE',health,wakeConfigured:!!this.env.FCM_SERVICE_ACCOUNT&&!!d.pushToken});
+    }return out;
   }
   async enqueue(deviceId,actionId,command,origin) {
     requireValue(typeof actionId==='string'&&/^[A-Za-z0-9_-]{16,80}$/.test(actionId),'STABLE_ACTION_ID_REQUIRED');
     const d=await this.get('device:'+deviceId);requireValue(d&&!d.revoked,'DEVICE_NOT_FOUND',404);
     command=validateCommand(command);const digest=await hash(canonical(command)),key='action:'+deviceId+':'+actionId,existing=await this.get(key);
     if(existing){requireValue(existing.digest===digest,'ACTION_CONFLICT',409);return publicTask(await this.get('task:'+existing.taskId));}
-    requireValue((await this.list('action:')).size<10000,'ACTION_JOURNAL_FULL',409);
-    const tasks=await this.list('task:');requireValue([...tasks.values()].filter(t=>ACTIVE.has(t.status)).length<64,'TASK_QUEUE_FULL',429);
-    const running=[...tasks.values()].find(t=>t.deviceId===deviceId&&ACTIVE.has(t.status));requireValue(!running,'DEVICE_BUSY',409);
+    requireValue(d.ownerIntent!=='PAUSED','OWNER_PAUSED',409);
+    // Per-action durable receipts have no lifetime count ceiling; retained receipts prevent replay.
+    const tasks=await this.activeTasks();requireValue(tasks.length<64,'TASK_QUEUE_FULL',429);
+    const running=tasks.find(t=>t.deviceId===deviceId&&ACTIVE.has(t.status));requireValue(!running,'DEVICE_BUSY',409);
     const now=Date.now(),task={taskId:id(),deviceId,actionId,digest,method:command.method,command:await seal(command,this.env.STATE_KEY),status:now-d.lastSeen<DEVICE_TTL?'QUEUED':'WAITING_DEVICE',createdAt:now,updatedAt:now,deadlineAt:now+(command.method==='watch'?(command.payload.maxSeconds+120)*1000:120000),evidenceCount:0,cancel:false,verified:false};
-    await this.put(key,{digest,taskId:task.taskId});await this.put('task:'+task.taskId,task);await this.storage.setAlarm(now+15000);
+    await this.put(key,{digest,taskId:task.taskId});await this.put('task:'+task.taskId,task);await this.put('active:'+task.taskId,task.taskId);await this.storage.setAlarm(now+15000);
     if(task.status==='WAITING_DEVICE') {task.reason=await this.wake(d,origin);await this.put('task:'+task.taskId,task);}
     return publicTask(task);
   }
@@ -161,16 +197,18 @@ export class HeyStore {
     const auth=await this.auth(request,'device'),b=await body(request),d=await this.get('device:'+auth.deviceId);
     requireValue(typeof b.session==='string'&&b.session.length<=80,'INVALID_SESSION');
     if(d.session!==b.session) {d.generation++;d.session=b.session;}
+    if(auth.predecessor)await this.storage.delete('credential:'+auth.predecessor);
     d.lastSeen=Date.now();d.health=b.health&&typeof b.health==='object'?b.health:{};await this.put('device:'+d.deviceId,d);
-    const tasks=[...(await this.list('task:')).values()].filter(t=>t.deviceId===d.deviceId&&ACTIVE.has(t.status)).sort((a,b)=>a.createdAt-b.createdAt);
+    const tasks=(await this.activeTasks()).filter(t=>t.deviceId===d.deviceId&&ACTIVE.has(t.status)).sort((a,b)=>a.createdAt-b.createdAt);
     const t=tasks[0];if(!t)return json({generation:d.generation,command:null});
     if(t.status==='RUNNING'||t.status==='CANCEL_REQUESTED') {
-      if(b.activeTaskId===t.taskId&&t.generation===d.generation) {t.leaseUntil=Date.now()+20000;t.updatedAt=Date.now();t.progress=b.progress||null;await this.put('task:'+t.taskId,t);}
+      if(b.activeTaskId===t.taskId&&t.generation===d.generation) {t.leaseUntil=Date.now()+20000;t.updatedAt=Date.now();t.progress=b.progressTaskId===t.taskId&&b.progressGeneration===t.generation?b.progress||null:null;await this.put('task:'+t.taskId,t);}
       else if(t.generation!==d.generation||Date.now()>t.leaseUntil) {t.status='UNKNOWN';t.reason='EXECUTION_LOST';t.updatedAt=Date.now();delete t.command;await this.put('task:'+t.taskId,t);}
       return json({generation:d.generation,command:null,cancelTaskId:t.cancel?t.taskId:null});
     }
     if(Date.now()>t.deadlineAt){t.status='ERROR';t.reason='DEVICE_DEADLINE';delete t.command;await this.put('task:'+t.taskId,t);return json({generation:d.generation,command:null});}
-    t.status='RUNNING';t.generation=d.generation;t.leaseUntil=Date.now()+20000;t.updatedAt=Date.now();await this.put('task:'+t.taskId,t);
+    if(d.ownerIntent==='PAUSED')return json({generation:d.generation,command:null,ownerIntent:'PAUSED'});
+    t.status='RUNNING';t.reason=null;t.generation=d.generation;t.leaseUntil=Date.now()+20000;t.updatedAt=Date.now();await this.put('task:'+t.taskId,t);
     return json({generation:d.generation,command:{taskId:t.taskId,actionId:t.actionId,digest:t.digest,generation:t.generation,deadlineAt:t.deadlineAt,...await unseal(t.command,this.env.STATE_KEY)}});
   }
   async boundTask(request,b) {
@@ -182,13 +220,14 @@ export class HeyStore {
   async deviceResult(request) {
     const b=await body(request),a=await this.auth(request,'device'),t=await this.get('task:'+b.taskId);requireValue(t&&t.deviceId===a.deviceId,'TASK_NOT_FOUND',404);requireValue(t.generation===b.generation&&t.digest===b.digest,'STALE_EXECUTION',409);
     const receiptDigest=await hash(canonical({status:b.status,verified:b.verified,result:b.result||{},reason:b.reason||null}));
+    if(t.status==='UNKNOWN'&&b.status==='CANCELLED'&&b.reason==='OWNER_PAUSED'&&(await this.get('device:'+a.deviceId)).ownerIntent==='PAUSED'){t.status='CANCEL_REQUESTED';}
     if(TERMINAL.has(t.status)){requireValue(t.receiptDigest===receiptDigest,'RESULT_CONFLICT',409);return json({accepted:true,duplicate:true});}
     requireValue(t.status==='RUNNING'||t.status==='CANCEL_REQUESTED','TASK_CLOSED',409);requireValue(['DONE','ERROR','CANCELLED','UNKNOWN'].includes(b.status),'INVALID_RESULT');
     requireValue(typeof b.verified==='boolean','VERIFICATION_REQUIRED');
     const result=b.result||{};requireValue(JSON.stringify(result).length<=50000,'RESULT_TOO_LARGE');
     if(t.method==='watch'&&b.verified) {const summary=t.coverage||{};requireValue(t.evidenceCount>=2&&summary.startTime<=2&&summary.ended&&summary.frames===t.evidenceCount&&!summary.visualGap&&result.coverageComplete===true&&result.playbackEnded===true,'WATCH_EVIDENCE_REQUIRED');const c=await unseal(t.command,this.env.STATE_KEY);if(c.payload.audioRequired)requireValue(summary.audio===t.evidenceCount&&!summary.audioGap&&summary.signal&&result.audioCoverageComplete===true,'AUDIO_EVIDENCE_REQUIRED');}
     t.status=b.status;t.verified=b.status==='DONE'&&b.verified;t.result=result;t.reason=b.reason||null;t.receiptDigest=receiptDigest;t.updatedAt=Date.now();delete t.command;
-    await this.put('task:'+t.taskId,t);return json({accepted:true});
+    await this.put('task:'+t.taskId,t);await this.storage.delete('active:'+t.taskId);if(t.evidenceCount)await this.put('retention:'+String(t.updatedAt+72*3600000).padStart(16,'0')+':'+t.taskId,t.taskId);const d=await this.get('device:'+t.deviceId);if(d.health?.taskId===t.taskId){d.health.taskId='';d.health.progress={};await this.put('device:'+d.deviceId,d);}return json({accepted:true});
   }
   async evidence(request) {
     const b=await body(request),t=await this.boundTask(request,b);
@@ -202,7 +241,7 @@ export class HeyStore {
     requireValue(b.sequence===t.evidenceCount,'EVIDENCE_SEQUENCE_GAP',409);
     const count=Math.ceil(data.length/48000);for(let i=0;i<count;i++)await this.put(key+':'+i,data.slice(i*48000,(i+1)*48000));
     await this.put(key,{parts:count,digest,createdAt:Date.now()});
-    if(t.method==='watch') {const m=e.media?.[0],s=t.coverage||{frames:0,audio:0,visualGap:false,audioGap:false,startTime:m?.currentTime??Infinity,lastTime:m?.currentTime??0,lastAt:e.observedAt,signal:false};const wall=(e.observedAt-s.lastAt)/1000;if(s.frames>0&&(wall<=0||wall>4||!m||m.currentTime<s.lastTime-.25||m.currentTime-s.lastTime>wall*1.1+1))s.visualGap=true;if(e.image)s.frames++;else s.visualGap=true;if(e.audio){s.audio++;s.signal||=e.audioMetadata?.signal==='PRESENT';s.audioGap||=e.audioMetadata?.gap===true;}else s.audioGap=true;s.lastTime=m?.currentTime??s.lastTime;s.lastAt=e.observedAt;s.ended=m?.ended===true;t.coverage=s;}
+    if(t.method==='watch') {const m=e.media?.[0],s=t.coverage||{frames:0,audio:0,visualGap:false,audioGap:false,startTime:m?.currentTime??Infinity,lastTime:m?.currentTime??0,lastAt:e.observedAt,signal:false};const wall=(e.observedAt-s.lastAt)/1000;if(s.frames>0&&(wall<=0||wall>4||!m||m.currentTime<s.lastTime-.25||m.currentTime-s.lastTime>wall*1.1+1))s.visualGap=true;if(e.image)s.frames++;else s.visualGap=true;if(e.visualMediaVerified===false)s.visualGap=true;if(e.audio){s.audio++;s.signal||=e.audioMetadata?.signal==='PRESENT';s.audioGap||=e.audioMetadata?.gap===true;}else s.audioGap=true;s.lastTime=m?.currentTime??s.lastTime;s.lastAt=e.observedAt;s.ended=m?.ended===true;t.coverage=s;}
     t.evidenceCount++;await this.put('task:'+t.taskId,t);return json({accepted:true});
   }
   async readEvidence(taskId,sequence) {
@@ -215,9 +254,10 @@ export class HeyStore {
     const next=evidence?cursor+1:cursor,content=[{type:'text',text:JSON.stringify({task:publicTask(t),evidence:evidence?{...evidence,image:evidence.image?{mimeType:evidence.image.mimeType}:null,audio:evidence.audio?{mimeType:evidence.audio.mimeType}:null}:null,cursor:next,hasNext:next<t.evidenceCount,evidenceCount:t.evidenceCount,contentAuthority:'untrusted-observation'})}];
     if(evidence?.image)content.push({type:'image',...evidence.image});if(evidence?.audio)content.push({type:'audio',...evidence.audio});return {content};
   }
-  async cancel(taskId) {const t=await this.get('task:'+taskId);requireValue(t,'TASK_NOT_FOUND',404);if(TERMINAL.has(t.status))return publicTask(t);t.cancel=true;t.status=t.status==='RUNNING'?'CANCEL_REQUESTED':'CANCELLED';t.updatedAt=Date.now();if(t.status==='CANCELLED')delete t.command;await this.put('task:'+taskId,t);return publicTask(t);}
+  async cancel(taskId) {const t=await this.get('task:'+taskId);requireValue(t,'TASK_NOT_FOUND',404);if(TERMINAL.has(t.status))return publicTask(t);t.cancel=true;t.status=['RUNNING','CANCEL_REQUESTED'].includes(t.status)?'CANCEL_REQUESTED':'CANCELLED';t.updatedAt=Date.now();if(t.status==='CANCELLED'){t.reason='OWNER_CANCELLED';delete t.command;}await this.put('task:'+taskId,t);return publicTask(t);}
   async devicePush(request) {const a=await this.auth(request,'device'),b=await body(request);requireValue(typeof b.pushToken==='string'&&b.pushToken.length<4000,'INVALID_PUSH_TOKEN');const d=await this.get('device:'+a.deviceId);d.pushToken=await seal(b.pushToken,this.env.STATE_KEY);await this.put('device:'+d.deviceId,d);return json({accepted:true});}
   async wake(d,origin) {
+    if(d.ownerIntent==='PAUSED')return 'OWNER_PAUSED';
     if(!this.env.FCM_SERVICE_ACCOUNT||!d.pushToken)return 'PUSH_CONFIGURATION_REQUIRED';
     try {
       const sa=JSON.parse(this.env.FCM_SERVICE_ACCOUNT),now=Math.floor(Date.now()/1000),enc=o=>to64(new TextEncoder().encode(JSON.stringify(o))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''),header=enc({alg:'RS256',typ:'JWT'}),payload=enc({iss:sa.client_email,scope:'https://www.googleapis.com/auth/firebase.messaging',aud:'https://oauth2.googleapis.com/token',iat:now,exp:now+3600}),unsigned=header+'.'+payload;
@@ -255,15 +295,18 @@ export class HeyStore {
     else {const {deviceId,actionId,...payload}=a;const method={hey_navigate:'navigate',hey_observe:'observe',hey_action:'action',hey_media:'media',hey_watch:'watch'}[name];result=await this.enqueue(deviceId,actionId,{method,payload},origin);}
     return {content:[{type:'text',text:JSON.stringify(result)}]};
   }
-  async alarm() {
-    let active=false;for(const t of (await this.list('task:')).values()) {
+  async alarm(){const run=this.tail.then(()=>this.reconcile());this.tail=run.then(()=>{},()=>{});return run;}
+  async reconcile() {
+    let active=false;for(const t of await this.activeTasks()) {
       if(!ACTIVE.has(t.status))continue;
       if(t.status==='RUNNING'||t.status==='CANCEL_REQUESTED') {if(Date.now()>t.leaseUntil){t.status='UNKNOWN';t.reason='HEARTBEAT_LOST';delete t.command;await this.put('task:'+t.taskId,t);continue;}}
       if(Date.now()>t.deadlineAt){t.status='ERROR';t.reason='TASK_DEADLINE';delete t.command;await this.put('task:'+t.taskId,t);}else active=true;
     }
-    for(const prefix of ['pair:','login:','code:','credential:'])for(const [k,r] of await this.list(prefix))if(r.expiresAt<Date.now())await this.storage.delete(k);
+    for(const prefix of ['pair:','login:','code:','credential:','rotation:'])for(const [k,r] of await this.list(prefix))if(r.expiresAt<Date.now())await this.storage.delete(k);
     // Evidence is retained for 72 hours; receipts stay to prevent action replay.
-    for(const t of (await this.list('task:')).values())if(TERMINAL.has(t.status)&&Date.now()-t.updatedAt>72*3600000&&t.evidenceCount>0){for(const k of (await this.list('evidence:'+t.taskId+':')).keys())await this.storage.delete(k);t.evidenceExpired=true;t.evidenceCount=0;t.result=null;await this.put('task:'+t.taskId,t);}
+    const due=await this.storage.list({prefix:'retention:',limit:100});
+    for(const [key,taskId] of due){if(Number(key.split(':')[1])>Date.now())break;const t=await this.get('task:'+taskId);if(t&&TERMINAL.has(t.status)){for(const k of (await this.list('evidence:'+t.taskId+':')).keys())await this.storage.delete(k);t.evidenceExpired=true;t.evidenceCount=0;t.result=null;await this.put('task:'+t.taskId,t);}await this.storage.delete(key);}
     if(active)await this.storage.setAlarm(Date.now()+15000);else await this.storage.setAlarm(Date.now()+3600000);
   }
 }
+

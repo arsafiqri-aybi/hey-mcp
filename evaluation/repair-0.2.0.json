@@ -1,0 +1,45 @@
+{
+  "version": "0.2.0",
+  "date": "2026-10-07",
+  "productStatus": "REPAIR_IMPLEMENTED_PHYSICAL_GATES_OPEN",
+  "gatewayTests": {
+    "passed": 28,
+    "failed": 0,
+    "syntax": "PASS"
+  },
+  "android": {
+    "build": "PASS_DEBUG_AND_UNSIGNED_RELEASE",
+    "verifierTests": {
+      "passed": 7,
+      "failed": 0
+    },
+    "lint": {
+      "errors": 0,
+      "warnings": 4
+    },
+    "package": "id.ars.hey",
+    "versionCode": 2,
+    "minSdk": 31,
+    "targetSdk": 35,
+    "apkSignature": "PASS_V2",
+    "zipAlignment": "PASS_ZIPALIGN_P16_NOT_ELF_OR_DEVICE_CERTIFICATION"
+  },
+  "physicalRetest": "RETEST_REQUIRED",
+  "wake": "BLOCKED_FIREBASE_CONFIGURATION",
+  "inPlaceUpdate": "BLOCKED_ORIGINAL_SIGNING_KEY_NOT_RECOVERED",
+  "originalCertSha256": "e77c945c03ae0126983aca0094a1dc98fea2c727e7dd986335460c6a455f015f",
+  "candidateCertSha256": "0dd325106ffd507f33daa4d46afdb05ccf120cf52a81add23f522bf4b22562d2",
+  "installedAppData": "NOT_REMOVED_OR_RESET",
+  "artifacts": [
+    {
+      "name": "hey-android-0.2.0-debug-candidate.apk",
+      "bytes": 8929516,
+      "sha256": "e8e389b68ddbbc5ebcad017bf27eaae23f5dcbc30d692b4b89ffdb650d86d02e"
+    },
+    {
+      "name": "hey-android-0.2.0-release-unsigned.apk",
+      "bytes": 7374220,
+      "sha256": "692c43852c8dfc751df8836b3850a291c1fbab37af1418db49a332cc60bfffd4"
+    }
+  ]
+}

@@ -1954,3 +1954,25 @@ This live reproduction matches the previously confirmed source root cause: servi
 **Status:** **FAIL / LIVE + SOURCE CONFIRMED**.
 
 This defect must be fixed before task-health/progress can be treated as authoritative across task boundaries.
+
+
+
+---
+
+## 35. 2026-10-07 — Authorized P0 repair implementation, version 0.2.0
+
+The owner authorized repairs and related root-cause fixes. Source changes are described in [REPAIR_0.2.0.md](REPAIR_0.2.0.md). Prior empirical failures above are preserved.
+
+**Implemented:** shared WebView Activity/Presentation hosting; bounded PixelCopy/document capture; native plus DOM masking; device-side watch startup; advancing playback verification; ended-consent gating; sample-clock audio timestamps; action-specific verifiers; canonical privacy-safe URL comparison; durable owner-pause finalization and reconciliation; task-scoped progress; stale health; encrypted SQLite action journal; active-task/retention indexes; bounded token rotation; precise cancellation/resource/policy errors; controlled download redirects; app-resume and explicit pause UX; pressed/ripple/motion/haptic feedback; Firebase refresh without pairing.
+
+**Automated result:** 28 gateway regression cases passed, including more than 10,000 retained action receipts. Android verifier unit tests, APK build and lint are recorded separately in evaluation/repair-0.2.0.json. This is source/build evidence, not a physical retest of the Vivo.
+
+**Physical status:** P0-A/B/C and lifecycle/privacy/UI changes remain RETEST_REQUIRED on the new APK. Never promote old FAIL entries to empirical PASS from compilation alone.
+
+**Wake:** BLOCKED_CONFIGURATION. Existing Worker bindings do not contain FIREBASE_PUBLIC or FCM_SERVICE_ACCOUNT. No Firebase project credentials were available through the connected tools. No wake success is claimed.
+
+**Signing:** BLOCKED_IN_PLACE_UPDATE. Workspace maintenance removed the original private debug signing key; no matching key was found locally or in Library. Original and candidate certificates differ. Installed app/data were not removed or reset. Owner must choose key recovery or a reviewed migration before installation. The candidate APK remains a separate test artifact; unsigned release output supports original-key signing if recovered.
+
+**Preserve:** HUMAN takeover, fresh refs/stateVersion, device serialization, cancellation, idempotency/conflict/replay protection, credential binding, webpage authority boundary, HTTPS/public-network checks, TLS validation, privacy redaction, explicit partial/unknown observation, and earlier evidence history.
+
+**Current repair map:** all implemented defects are SOURCE_REPAIRED / DEVICE_RETEST_REQUIRED unless an automated regression specifically verifies the server behavior. P0-E configuration is still BLOCKED. Download DNS rebinding, actual media pixels, audio intelligibility and real-host ingestion remain additional evidence gates.
