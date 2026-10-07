@@ -1,0 +1,1 @@
+{"name":"hey-gateway","main":"src/worker.js","compatibility_date":"2026-10-07","durable_objects":{"bindings":[{"name":"HEY","class_name":"HeyStore"}]},"migrations":[{"tag":"v1","new_sqlite_classes":["HeyStore"]}],"observability":{"enabled":false}}

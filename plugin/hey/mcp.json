@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "hey": {"type": "streamable-http", "url": "https://hey-gateway.arsafiqri-ua03.workers.dev/mcp"}
+  }
+}

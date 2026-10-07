@@ -1,0 +1,2 @@
+# Hey by Ars
+This is a new private project. Do not modify, import credentials from, or deploy over older operator projects. Preserve the complete target in architecture/CONTRACT.json. Source-tested, deployed, device-tested, audio-tested and wake-tested are separate gates. Never turn an UNKNOWN action into a successful action or replay it automatically. Run npm test and npm run check before committing. Never commit secrets, browser profiles or raw user media. No new scope or weakened gate may be hidden in a status change.

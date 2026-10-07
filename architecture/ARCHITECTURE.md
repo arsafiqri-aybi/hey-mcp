@@ -1,0 +1,15 @@
+# Hey architecture 0.1
+
+ChatGPT invokes goal-shaped MCP tools through private OAuth. A new Cloudflare Worker routes owner state to a single SQLite-backed Durable Object. Android polls outward over authenticated HTTPS while its foreground service is running; push wakes a dormant service when Firebase is configured and Android permits it. Each device has a separate credential and explicit identity. Gateway instance `hey-gateway` is independent of previous operators.
+
+Commands have stable action IDs, canonical payload digests, device generations and deadlines. A command is stored before dispatch. A device persists its dispatch journal before performing any action. A lost execution becomes UNKNOWN; it is not automatically replayed. Task completion, verification and evidence are independent properties. Per-device active execution is serial. OAuth authorization codes, pairing links and refresh tokens are single-use. Runtime commands and observation media are encrypted at rest. Evidence uses bounded chunks and has a 72-hour retention window; action receipts survive evidence expiration.
+
+Android UI, service and notifications read the same StateStore. ONLINE requires an acknowledged poll within 20 seconds. The browser is a Chromium-backed WebView with private app storage, hosted in a Presentation on an OWN_CONTENT_ONLY virtual display. The physical phone display is not the screenshot source. Takeover displays a copy of that same rendered surface and injects local input into the same WebView; it does not create a second browser session.
+
+JavaScript observation runs through evaluateJavascript; websites do not receive a native addJavascriptInterface. Password/OTP/card fields are masked in screenshots and input values are omitted from DOM observations. Captured webpage content remains untrusted. Runtime refs are versioned and invalidated after mutations. Action execution does not by itself certify that a business operation succeeded.
+
+Video observation samples actual browser media state and rendered frames approximately once per second after each accepted upload. Android playback capture records only Hey's UID and attaches WAV chunks with timestamp/quality metadata. Missing frames, seek jumps, time gaps, silent-or-unavailable capture and failed uploads prevent audiovisual verification. Understanding must be grounded in returned media; playback-end is not proof of comprehension.
+
+## Unresolved production decisions
+
+WebView is not a substitute for every Chrome capability. Embedded OAuth restrictions, passkeys, DRM, tab/window behavior and platform-specific media must pass target-site tests; a separate Chromium embedding adapter remains a replan option. Audio requires an Android-approved MediaProjection session; one-time install permission alone cannot guarantee future audio access. Force-stop and OEM battery restrictions cannot be defeated by a foreground-service declaration. Firebase provisioning and a real high-priority wake test are required before dormant wake is certified. No 24/7 claim is made.

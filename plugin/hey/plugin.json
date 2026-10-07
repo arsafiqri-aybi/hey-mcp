@@ -1,0 +1,7 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "hey",
+  "version": "0.1.0",
+  "description": "Hey by Ars. Connect to your private Android browser, observe real page and media evidence, perform authorized interactions, and verify results.",
+  "author": {"name": "Ars"}
+}
