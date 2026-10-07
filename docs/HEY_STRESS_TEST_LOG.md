@@ -1439,3 +1439,54 @@ Different shutdown causes must remain distinguishable:
 - unexpected process/transport loss -> `EXECUTION_LOST`.
 
 **Conclusion:** owner pause currently loses task execution semantics and must be fixed before P0 lifecycle can be considered complete.
+
+
+---
+
+## 28. 2026-10-07 — Recovery after pause-induced EXECUTION_LOST
+
+### 28.1 Resume result
+
+After the owner pressed **Siapkan browser** following a pause that had interrupted a RUNNING watch:
+
+Observed:
+- device returned `online:true`;
+- `connection:"ONLINE"`;
+- `browser:"READY"`;
+- `control:"AGENT"`;
+- audio remained `CONSENT_ENDED`.
+
+The old watch remained:
+- `status:"UNKNOWN"`;
+- `reason:"EXECUTION_LOST"`;
+- no new evidence appended.
+
+**Status:** service recovery **PASS**; old task terminal ambiguity persists as expected from the prior defect.
+
+### 28.2 Stale task state survives service restart temporarily
+
+Immediately after resume, device health still advertised the old terminal/unknown watch task ID and its old progress snapshot.
+
+A new observe command was nevertheless accepted and completed:
+- `DONE`;
+- `verified:true`.
+
+After that new task completed:
+- health task ID cleared;
+- health progress returned to a normal terminal summary.
+
+**Conclusion:** stale task state after restart is mostly a health/reporting defect, not a true execution lock.
+
+**Status:** execution recovery **PASS**, state cleanup **NEEDS FIX**.
+
+### 28.3 Browser session restoration after service recreation
+
+After pause/resume:
+- the same logical set of tab URLs was present again;
+- browser tab IDs were regenerated.
+
+**Conclusion:** current runtime appears to restore logical tab/session content, but not stable runtime tab identity.
+
+**Status:** content restoration **PASS**, identity preservation **NOT PROVIDED BY CURRENT CONTRACT**.
+
+If stable tab identity is ever required across service recreation, it must be designed explicitly.
