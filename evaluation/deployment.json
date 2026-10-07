@@ -13,5 +13,6 @@
   "plugin": "https://chatgpt.com/plugins/plugins_6ac5ed4c9c1c8191abf36ba243d09d90",
   "liveProtocolChecks": 16,
   "ownerSetup": "AWAITING_OWNER",
-  "deviceVerified": false
+  "deviceVerified": false,
+  "temporaryControlCredential": "REVOKED_AFTER_LIVE_PROTOCOL_TESTS"
 }
