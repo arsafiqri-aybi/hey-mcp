@@ -1490,3 +1490,62 @@ After pause/resume:
 **Status:** content restoration **PASS**, identity preservation **NOT PROVIDED BY CURRENT CONTRACT**.
 
 If stable tab identity is ever required across service recreation, it must be designed explicitly.
+
+
+---
+
+## 29. 2026-10-07 — Task progress state isolation
+
+### 29.1 Live symptom
+
+Across earlier live runs, unrelated navigation tasks were observed carrying stale watch/media progress fields such as:
+- `currentTime`;
+- `duration`;
+- `frames`;
+- `audioChunks`;
+- `visualGap`;
+- `audioGap`;
+- `paused`.
+
+Those fields belonged to a previous watch task, not to the navigation task.
+
+A fresh short watch -> navigation sequence may complete too quickly to expose the transient state in every poll, so this issue is timing-sensitive.
+
+### 29.2 Root cause confirmed in Android source
+
+`HeyService` owns a service-level mutable field:
+
+`private volatile JSONObject active, progress = new JSONObject();`
+
+During a watch sample, it sets:
+
+`progress = new JSONObject(...media/watch metrics...)`
+
+and sends that object on every device poll.
+
+When a new command is dispatched, current code resets:
+- `active`;
+- `sequence`;
+- `finishing`;
+- app state task status;
+
+but does **not** reset the service-level `progress` object.
+
+Therefore a new non-watch task can temporarily report the previous watch task's metrics until the next state transition overwrites or clears them.
+
+**Status:** **FAIL / STATE ISOLATION DEFECT CONFIRMED**.
+
+### 29.3 Required correction
+
+At every new task dispatch:
+1. initialize a fresh task-scoped progress object;
+2. never reuse progress from the previous task;
+3. associate progress with the active task ID/generation;
+4. ignore/reject progress whose task ID or generation does not match the active execution;
+5. clear task-scoped progress on every terminal transition.
+
+Preferred model:
+- progress belongs to an execution record, not to the service globally;
+- heartbeat should transmit `{ taskId, generation, progress }` atomically.
+
+**Preserve:** terminal summaries such as `lastStatus` may remain separate from active-task progress, but the two must never be conflated.
