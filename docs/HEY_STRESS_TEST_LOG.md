@@ -1685,3 +1685,60 @@ Source audit:
 **Status:** **PASS within current audit scope**.
 
 This is a source-level protocol audit, not a formal cryptographic proof or external penetration test.
+
+
+---
+
+## 31. 2026-10-07 — URL canonicalization and DNS-level private-network defense
+
+### 31.1 Trailing-dot localhost bypass attempt
+
+Test URL:
+`https://localhost./`
+
+Observed:
+- gateway accepted the URL and queued a navigation task;
+- Android WebView did not reach a private service;
+- the request was blocked and the resulting page became a Chrome error page;
+- terminal task was `DONE + verified:false + POSTCONDITION_UNCERTAIN`;
+- page error included `ERR_HTTP_RESPONSE_CODE_FAILURE`.
+
+### 31.2 Source-confirmed defense in depth
+
+Android `BrowserRuntime` has two layers:
+
+1. `publicUrl()` performs scheme/host syntax checks;
+2. `networkUrl()` resolves the hostname with `InetAddress.getAllByName()` and blocks:
+   - loopback;
+   - link-local;
+   - site-local/private;
+   - multicast;
+   - any-local;
+   - IPv6 unique-local.
+
+`shouldInterceptRequest()` applies `networkUrl()` to actual WebView network requests.
+
+Therefore the trailing-dot hostname can bypass the first string-level hostname rule but is stopped by DNS/address-level enforcement before private network access.
+
+**Security status:** **PASS / DEFENSE IN DEPTH WORKS**.
+
+### 31.3 Policy/canonicalization gap
+
+The gateway-side URL validator does not normalize a terminal dot before checking host suffixes.
+
+As a result:
+- `localhost` is rejected immediately;
+- `localhost.` can be accepted and dispatched;
+- Android later blocks it.
+
+**Required correction:**
+- canonicalize hostnames before policy checks;
+- strip a single terminal DNS dot for comparison;
+- apply the same canonical host policy in gateway and Android;
+- preserve Android DNS-resolution enforcement as the final network boundary.
+
+Preferred terminal reason:
+`PUBLIC_HOST_REQUIRED` or `PRIVATE_NETWORK_BLOCKED`,
+not a generic browser error / `POSTCONDITION_UNCERTAIN`.
+
+**Status:** security **PASS**, policy consistency **NEEDS FIX**.
