@@ -989,3 +989,38 @@ Because the task became terminal before takeover timing could be proven, this at
 **Status:** **RETEST REQUIRED**.
 
 **Harness note:** do not label PASS/FAIL unless task is confirmed RUNNING at the moment control changes to HUMAN.
+
+
+---
+
+## 20. 2026-10-07 — Handoff during active task: valid retest
+
+### 20.1 Setup
+
+Goal:
+- confirm behavior when HUMAN takeover happens while an agent task is already `RUNNING`.
+
+Sequence:
+1. control confirmed `AGENT`;
+2. generic HTML5 media positioned at 0 seconds;
+3. `hey_watch(maxSeconds:120, audioRequired:false)` started;
+4. task confirmed `RUNNING`;
+5. user tapped **Ambil alih** while task was still active.
+
+### 20.2 Observed result
+
+After takeover:
+- device control became `HUMAN`;
+- watch became terminal `ERROR`;
+- reason: `HUMAN_CONTROL_ACTIVE`;
+- `verified:false`;
+- coverage remained incomplete;
+- task produced 11 evidence records before termination;
+- a terminal read at cursor 11 returned `evidence:null`, `hasNext:false`, `evidenceCount:11`;
+- no additional evidence was appended after takeover.
+
+**Conclusion:** HUMAN ownership transfer interrupts an already-running watch task rather than letting the agent continue observing/acting in the background.
+
+**Status:** **PASS**.
+
+**Preserve:** takeover must remain authoritative over already-running tasks, not only newly submitted commands.
