@@ -1058,3 +1058,86 @@ Observed:
 **Status:** **PASS**.
 
 **Preserve:** HUMAN takeover must terminate current agent work; AGENT handback must require new work submission rather than resuming the old task.
+
+
+---
+
+## 22. 2026-10-07 — Network loss + reconnect during RUNNING watch
+
+### 22.1 Setup
+
+Goal:
+- interrupt network connectivity while a watch task is confirmed `RUNNING`;
+- restore network;
+- verify fail-safe semantics, reconnect, task accounting, and device recoverability.
+
+Sequence:
+1. generic HTML5 media positioned at 0 seconds and paused;
+2. `hey_watch(maxSeconds:120, audioRequired:false)` started;
+3. task confirmed `RUNNING`;
+4. user enabled airplane mode for about 15 seconds;
+5. user disabled airplane mode and restored connectivity.
+
+### 22.2 Task outcome after reconnect
+
+Observed:
+- device returned to top-level `online:true`;
+- watch became terminal `ERROR`;
+- reason: `OBSERVATION_DELIVERY_GAP`;
+- `verified:false`;
+- `coverageComplete:false`;
+- `audioCoverageComplete:false`;
+- `understandingVerified:false`.
+
+**Conclusion:** Hey fails safe when evidence delivery continuity is broken. It does not silently resume and does not claim complete observation after a network gap.
+
+**Status:** **PASS for truthfulness/fail-safe behavior**.
+
+### 22.3 Temporary stale health after reconnect
+
+Immediately after reconnect:
+- top-level device was `online:true`;
+- nested health still carried the now-terminal watch task ID;
+- progress had already become empty.
+
+A new navigation command was accepted despite the stale health task ID, so this did **not** represent real device busy state.
+
+After the new task completed:
+- health task ID cleared to empty;
+- health progress reflected the new terminal task.
+
+**Status:** execution recovery **PASS**, health cleanup **NEEDS FIX**.
+
+**Required correction:** terminal task cleanup should propagate to health immediately after reconnect rather than waiting for subsequent work.
+
+### 22.4 Evidence accounting mismatch under delivery-gap failure
+
+For the same task:
+- terminal `evidenceCount` was 8;
+- terminal result reported `frames:9`, `audioChunks:9`;
+- last progress snapshot reported `frames:7`, `audioChunks:7`.
+
+This creates three different counts for the same failed observation window.
+
+**Required correction:** define one authoritative accounting model and keep:
+- streamed progress count;
+- persisted evidence count;
+- terminal result count
+consistent, or explicitly document why dropped/unpersisted samples are excluded from one layer.
+
+**Status:** **NEEDS FIX**.
+
+### 22.5 Post-reconnect command recovery
+
+A new public HTTPS navigation was submitted after the failed watch.
+
+Observed:
+- command queued normally;
+- completed `DONE`;
+- `verified:true`;
+- requested page loaded correctly;
+- health returned to idle with empty task ID.
+
+**Status:** **PASS**.
+
+**Preserve:** network-loss failure of one task must not poison the next task.
