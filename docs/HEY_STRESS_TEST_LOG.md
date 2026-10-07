@@ -1024,3 +1024,37 @@ After takeover:
 **Status:** **PASS**.
 
 **Preserve:** takeover must remain authoritative over already-running tasks, not only newly submitted commands.
+
+
+---
+
+## 21. 2026-10-07 — HUMAN -> AGENT handback recovery
+
+### 21.1 Goal
+
+Verify that after HUMAN takeover terminates an active agent task:
+1. returning ownership to AGENT does not resurrect the interrupted task;
+2. new agent commands can execute normally.
+
+### 21.2 Observed result
+
+After user tapped **Kembalikan ke Hey**:
+- device control became `AGENT`;
+- previously interrupted watch remained terminal `ERROR`;
+- reason remained `HUMAN_CONTROL_ACTIVE`;
+- evidence count stayed fixed at 11;
+- no task resurrection occurred.
+
+A new safe navigation command was then sent.
+
+Observed:
+- task queued normally;
+- finished `DONE`;
+- `verified:true`;
+- resulting page and DOM matched the requested destination.
+
+**Conclusion:** ownership handback is clean. Previously interrupted work does not resume implicitly, and the next agent task can start from a fresh control boundary.
+
+**Status:** **PASS**.
+
+**Preserve:** HUMAN takeover must terminate current agent work; AGENT handback must require new work submission rather than resuming the old task.
