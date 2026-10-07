@@ -1742,3 +1742,70 @@ Preferred terminal reason:
 not a generic browser error / `POSTCONDITION_UNCERTAIN`.
 
 **Status:** security **PASS**, policy consistency **NEEDS FIX**.
+
+
+---
+
+## 32. 2026-10-07 — Android WebView hardening audit
+
+### 32.1 Browser security settings
+
+Source audit confirms the Hey WebView currently uses:
+
+- WebView debugging disabled;
+- JavaScript enabled;
+- DOM storage enabled;
+- file access disabled;
+- content access disabled;
+- mixed content set to never allow;
+- media playback requires user gesture;
+- automatic JavaScript window opening disabled;
+- Safe Browsing enabled;
+- third-party cookies disabled;
+- website permission requests denied by default;
+- TLS certificate errors explicitly cancelled;
+- popup/new-window creation rejected unless represented through an explicit Hey tab action;
+- no JavaScript interface bridge was found in the audited BrowserRuntime.
+
+**Status:** **PASS / GOOD DEFAULT HARDENING**.
+
+### 32.2 File chooser boundary
+
+Web file chooser requests are intercepted and surfaced as `FILE_SELECTION_REQUIRED`.
+
+Actual file selection is delegated to Android `ACTION_OPEN_DOCUMENT`, requiring explicit user selection.
+
+**Status:** **PASS**.
+
+### 32.3 Download boundary — redirect review required
+
+Before handing a download to Android `DownloadManager`, Hey calls `networkUrl(downloadUrl)`, which:
+- validates public HTTPS;
+- resolves DNS;
+- blocks loopback/private/link-local/site-local/multicast/unique-local addresses.
+
+However, after that initial validation, the transfer is delegated to Android `DownloadManager`.
+
+Potential boundary:
+- if the initial public download URL redirects,
+- subsequent redirect handling may occur inside DownloadManager rather than BrowserRuntime;
+- therefore Hey's per-request `networkUrl()` interceptor may not validate every redirect hop.
+
+This has **not yet been proven exploitable** in the live test.
+
+**Classification:** **SECURITY RETEST / DESIGN REVIEW REQUIRED**.
+
+Preferred correction:
+- ensure every redirect hop is revalidated against the same public-network policy;
+- if DownloadManager cannot guarantee this, resolve downloads through a controlled redirect-validation layer before enqueueing;
+- never allow a public download URL to become a private-network fetch after redirect;
+- preserve cookie scoping and avoid leaking session cookies cross-origin.
+
+### 32.4 Cookie/session defaults
+
+Observed source behavior:
+- first-party cookies accepted;
+- third-party cookies disabled;
+- cookies flushed on page completion and runtime close.
+
+**Status:** reasonable for authenticated browser sessions; privacy/security behavior should remain covered by future cookie-isolation tests.
