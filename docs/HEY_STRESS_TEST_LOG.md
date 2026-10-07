@@ -2007,3 +2007,51 @@ Android initial hotfix: `50e4239547df48d6f2554ca13facbb90f10cf8a4`; final source
 **Installation:** updating over the supplied matching-certificate 0.2.0 APK preserves app-owned credentials/profile. It cannot update over original differently signed 0.1.0. A remote pairing record alone does not prove a newly installed app has a local token. The new UI distinguishes these states; do not promise no pairing is needed if local credentials are absent.
 
 **Required physical retest:** install update; open Home (visible 0.2.1); start/resume; verify first appVersion=0.2.1 authenticated heartbeat, runtime RUNNING and live browser; pause then quickly resume and wait beyond old five-second stop deadline; verify intentional pause stays paused; verify visible restart and network recovery. Actual Vivo service recovery remains RETEST_REQUIRED. Force-stop/OEM unlimited recovery is not claimed. FCM wake remains BLOCKED_CONFIGURATION and is independent of foreground startup.
+
+
+---
+
+## 38. 2026-10-07 — HUMAN takeover scroll input routing
+
+### 38.1 Owner-reported physical UI defect
+
+**Test context:**
+- Hey Android 0.2.1 on the physical phone;
+- browser session active;
+- owner selected **Ambil alih** / HUMAN control;
+- owner attempted to scroll while interacting with the browser surface.
+
+**Observed by owner:**
+- the gesture scrolled the surrounding Hey application page/container;
+- the browser/WebView content did **not** receive the intended scroll gesture.
+
+**Status:** **NEEDS FIX / PHYSICAL UX DEFECT**.
+
+**Primary affected component:** `hey-android` Browser UI/input routing.
+
+### 38.2 Required correction
+
+When HUMAN takeover is active and a touch gesture begins inside the browser surface:
+
+- the hosted WebView must own vertical/horizontal pan and scroll gestures;
+- the parent Activity `ScrollView` must not intercept an active browser gesture;
+- normal app-page scrolling may continue outside the browser viewport;
+- AGENT/HUMAN ownership enforcement must remain unchanged;
+- browser taps, drags, text selection, pinch/zoom where supported, and nested-page scrolling must not be broken by the fix;
+- switching tabs/pages and leaving HUMAN mode must restore ordinary parent-container behavior cleanly.
+
+Likely implementation areas to inspect include parent touch interception / nested scrolling around `browserHost` and the directly hosted shared WebView. Do not solve this by introducing a second browser instance.
+
+### 38.3 Retest contract
+
+After repair on the physical device:
+
+1. open a page taller than the WebView viewport;
+2. enter HUMAN takeover;
+3. drag vertically from the center of the browser surface;
+4. verify browser `scrollY` changes while the outer Hey page remains stationary;
+5. perform a gesture starting outside the browser and verify the Hey page can still scroll where appropriate;
+6. verify taps/forms and AGENT <-> HUMAN handoff still work;
+7. record the result as **RETESTED / FIXED** only after physical verification.
+
+No source repair was performed as part of this log entry.
