@@ -2055,3 +2055,27 @@ After repair on the physical device:
 7. record the result as **RETESTED / FIXED** only after physical verification.
 
 No source repair was performed as part of this log entry.
+
+---
+
+## 2026-10-10 — Hey Browser Engine vNext P0/P1 candidate, feature branch only
+
+**Scope:** `feat/hey-browser-engine-vnext-p0-p1-20261010` in `hey-android` and `hey-mcp`.
+This entry is implementation/fixture evidence, **not** a physical phone retest. Earlier FAIL and BLOCKED statuses remain open until physically reverified.
+
+| Gate | Observed evidence | Status |
+| --- | --- | --- |
+| Semantic locator runtime | Chromium fixture: role/name, label, placeholder, testId, text and CSS returned unique refs; missing/ambiguous/hidden/invalid input produced explicit errors | PASS (local Chromium fixture), ANDROID RETEST REQUIRED |
+| Locator sensitive-field policy | Dummy password locator returned `[sensitive]`, not its test value; injection-like query remained inert | PASS (local Chromium fixture), ANDROID RETEST REQUIRED |
+| Auto-scroll/click preparation | Chromium fixture scrolled nested container to offscreen button; overlay/disabled/detached element returned safe errors | PASS (local Chromium fixture), ANDROID RETEST REQUIRED |
+| MCP schema | Feature-branch JavaScript syntax checks succeeded; 16 local V8 assertions on locator type/limits, command rejection, tool definition, scroll direction | PASS (contract-level), FULL NODE TEST RETEST REQUIRED |
+| Browser scroll ownership | Native ControlledWebView requests parent not intercept HUMAN touch gestures | IMPLEMENTED, PHYSICAL RETEST REQUIRED |
+| Nested scroll verification | Observer/BrowserVerifier now compare bounded nested scroll positions; Java regression cases added | IMPLEMENTED, JVM TEST RETEST REQUIRED |
+| Screenshot path | Detects flat composited candidate and falls back to masked canvas; untrusted flat frame marked `SUSPECT_BLANK` | IMPLEMENTED, PHYSICAL VISUAL/MASK RETEST REQUIRED |
+| Action verification | More postcondition signals; no claim that browser-side effect proves goal success | IMPLEMENTED, JVM AND PHONE RETEST REQUIRED |
+| Service recovery | Existing 0.2.1 lifecycle/pairing code retained; no device wake/patch installation | UNCHANGED, PHYSICAL RETEST REQUIRED |
+| Production | No main mutation, no Worker deployment, no APK installation, no installed-plugin update | NOT DEPLOYED (intended) |
+
+**Fixture environment:** local headless Chromium at `/usr/bin/chromium`, Python Playwright; scripted `evaluation/browser_fixture_test.py` stored in Android feature branch. This proves DOM logic on Chromium only, not embedded Android WebView/PixelCopy.
+
+**Still open P0:** real Vivo browser visibility, screen/keyboard swipes, screenshot redaction/compositor frames, lockscreen and background service recovery, YouTube audio/video, wake. Treat no previous real-phone FAIL as fixed merely because source changed.

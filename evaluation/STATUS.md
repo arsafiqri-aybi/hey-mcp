@@ -1,3 +1,7 @@
+# vNext 0.3.0-dev candidate — 2026-10-10 (feature branch only)
+
+Source branch implements an additional `hey_locate` MCP tool and guarded locator validation; Android feature branch adds DOM semantics and actionability. Chromium fixture PASS and local schema checks PASS. Node 22 full `npm test && npm run check`, Android SDK 35 build/JVM tests, actual paired-phone E2E and website screenshots remain **RETEST REQUIRED** in this environment. Production MCP Worker, plugin installation and `main` are unchanged. See `docs/HEY_STRESS_TEST_LOG.md` new 2026-10-10 section.
+
 # Repair status — 0.2.0
 
 Source repairs implemented. Gateway regression tests: 28 PASS; Android verifier tests: 7 PASS; debug and unsigned release APK builds: PASS; lint: 0 errors, 4 warnings. See repair-0.2.0.json. Physical Vivo visual/media/audio/lifecycle retests remain required. Firebase/FCM configuration remains unavailable. Original 0.1.0 signing key was not recovered, so an in-place update is blocked; installed data was not removed. Gateway public and authenticated plugin checks verified version 0.2.0; existing device pairing/state remains. See hey-mcp/evaluation/deployment-0.2.0.json. Prior evaluation below is historical evidence.
