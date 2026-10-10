@@ -203,3 +203,11 @@ test('P1 semantic lookup uses the same immutable receipt and dispatch isolation 
   const dispatch=(await poll(h,d)).data.command;
   assert.equal(dispatch.method,'locate');assert.deepEqual(dispatch.payload,payload);
 });
+
+test('validation normalizes a copy without silently changing the caller retry payload',()=>{
+  const input={method:'action',payload:{action:'scroll',value:'down'}};
+  assert.deepEqual(validateCommand(input).payload,{action:'scroll',x:0,y:600});
+  assert.deepEqual(input.payload,{action:'scroll',value:'down'});
+  assert.deepEqual(validateCommand(input),validateCommand(input));
+  for(const payload of [null,false,0,'',[]])assert.throws(()=>validateCommand({method:'observe',payload}),/INVALID_PAYLOAD/);
+});
