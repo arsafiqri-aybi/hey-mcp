@@ -292,7 +292,7 @@ export class HeyStore {
     if(name==='hey_status')result={devices:await this.devices(),version:VERSION,wakeConfigured:!!this.env.FCM_SERVICE_ACCOUNT};
     else if(name==='hey_pair')result=await this.createPair(a.label,origin);
     else if(name==='hey_cancel')result=await this.cancel(a.taskId);
-    else {const {deviceId,actionId,...payload}=a;const method={hey_navigate:'navigate',hey_observe:'observe',hey_action:'action',hey_media:'media',hey_watch:'watch'}[name];result=await this.enqueue(deviceId,actionId,{method,payload},origin);}
+    else {const {deviceId,actionId,...payload}=a;const method={hey_navigate:'navigate',hey_observe:'observe',hey_locate:'locate',hey_action:'action',hey_media:'media',hey_watch:'watch'}[name];result=await this.enqueue(deviceId,actionId,{method,payload},origin);}
     return {content:[{type:'text',text:JSON.stringify(result)}]};
   }
   async alarm(){const run=this.tail.then(()=>this.reconcile());this.tail=run.then(()=>{},()=>{});return run;}

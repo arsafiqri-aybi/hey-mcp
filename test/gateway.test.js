@@ -40,7 +40,7 @@ test('owner forms preserve same-origin POST metadata and reject null or foreign 
 });
 test('MCP discovery advertises schemas without starting any browser',async()=>{
   const h=await harness();const r=await request(h,'/mcp',{jsonrpc:'2.0',id:1,method:'initialize',params:{protocolVersion:'2025-06-18'}});assert.equal((await r.json()).result.serverInfo.name,'Hey by Ars');
-  const list=await (await request(h,'/mcp',{jsonrpc:'2.0',id:2,method:'tools/list'})).json();assert.equal(list.result.tools.length,9);assert.equal(h.storage.data.size,0);
+  const list=await (await request(h,'/mcp',{jsonrpc:'2.0',id:2,method:'tools/list'})).json();assert.equal(list.result.tools.length,10);assert.equal(h.storage.data.size,0);
 });
 test('pairing is single-use even for concurrent requests',async()=>{
   const h=await harness(),p=await h.store.createPair('Phone','https://hey.test'),code=new URL(p.pairingLink).searchParams.get('code');const rs=await Promise.all([request(h,'/api/enroll',{code},null),request(h,'/api/enroll',{code},null)]);assert.deepEqual(rs.map(r=>r.status).sort(),[200,403]);assert.equal((await h.store.list('device:')).size,1);
@@ -172,4 +172,34 @@ test('canvas fallback cannot certify actual video coverage',async()=>{
   const h=await harness(),d=await pair(h),t=await h.store.enqueue(d.deviceId,action(),{method:'watch',payload:{maxSeconds:8,audioRequired:false}},'https://hey.test'),p=(await poll(h,d)).data.command;
   for(let i=0;i<2;i++)assert.equal((await request(h,'/api/device/evidence',{taskId:p.taskId,generation:p.generation,digest:p.digest,sequence:i,observation:{observedAt:Date.now()+i*1000,media:[{currentTime:i,ended:i===1}],image:{mimeType:'image/jpeg',data:'AAAA'},visualMediaVerified:false,captureMode:'DOCUMENT_CANVAS'}},d.deviceToken)).status,200);
   assert.equal((await request(h,'/api/device/result',{taskId:p.taskId,generation:p.generation,digest:p.digest,status:'DONE',verified:true,result:{coverageComplete:true,playbackEnded:true}},d.deviceToken)).status,400);
+});
+
+test('P1 locate allows constrained semantic targets and rejects unsafe or ambiguous schemas',()=>{
+  const valid=[
+    {by:'role',query:'button',name:'Continue',exact:true},
+    {by:'text',query:'Read more'},
+    {by:'label',query:'Email'},
+    {by:'placeholder',query:'Search'},
+    {by:'testId',query:'submit'},
+    {by:'css',query:'button.primary'}
+  ];
+  for(const payload of valid)assert.equal(validateCommand({method:'locate',payload}).method,'locate');
+  for(const payload of [
+    {by:'xpath',query:'//*'},
+    {by:'role',query:''},
+    {by:'text',query:'x'.repeat(241)},
+    {by:'css',query:'button',name:'Save'},
+    {by:'text',query:'Save',exact:'true'},
+    {by:'role',query:'button',secret:'stolen'}
+  ])assert.throws(()=>validateCommand({method:'locate',payload}));
+});
+test('P1 semantic lookup uses the same immutable receipt and dispatch isolation as every command',async()=>{
+  const h=await harness(),d=await pair(h);await poll(h,d);
+  const id=action(),payload={by:'role',query:'button',name:'Submit'};
+  const first=await h.store.enqueue(d.deviceId,id,{method:'locate',payload},'https://hey.test');
+  const same=await h.store.enqueue(d.deviceId,id,{method:'locate',payload},'https://hey.test');
+  assert.equal(first.taskId,same.taskId);
+  await assert.rejects(()=>h.store.enqueue(d.deviceId,id,{method:'locate',payload:{...payload,name:'Delete'}},'https://hey.test'),/ACTION_CONFLICT/);
+  const dispatch=(await poll(h,d)).data.command;
+  assert.equal(dispatch.method,'locate');assert.deepEqual(dispatch.payload,payload);
 });
